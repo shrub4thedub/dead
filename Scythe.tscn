@@ -1,0 +1,185 @@
+[gd_scene load_steps=25 format=3 uid="uid://b8yq2mv8e5cvi"]
+
+[ext_resource type="Script" path="res://Scythe.gd" id="1_scythe"]
+[ext_resource type="Texture2D" uid="uid://cj8bvj7u1d4kb" path="res://Assets/Sycthe_1.png" id="2_sycthe1"]
+[ext_resource type="Texture2D" uid="uid://d2b3o7dqw0dj7" path="res://Assets/Sycthe_2.png" id="3_sycthe2"]
+[ext_resource type="Texture2D" uid="uid://c3g64bstwvavj" path="res://Assets/Sycthe_3.png" id="4_sycthe3"]
+[ext_resource type="Texture2D" uid="uid://dvwvj7xs8vovx" path="res://Assets/Sycthe_4.png" id="5_sycthe4"]
+[ext_resource type="Texture2D" uid="uid://ck3o5gxj6hkqt" path="res://Assets/Sycthe_5.png" id="6_sycthe5"]
+[ext_resource type="Texture2D" uid="uid://bvwcohvj5bq5j" path="res://Assets/Sycthe_6.png" id="7_sycthe6"]
+[ext_resource type="Texture2D" uid="uid://cwffj8y2d7jek" path="res://Assets/Sycthe_7.png" id="8_sycthe7"]
+[ext_resource type="Texture2D" uid="uid://6i8kpq3qo0dd" path="res://Assets/Sycthe_8.png" id="9_sycthe8"]
+[ext_resource type="Texture2D" uid="uid://d1u4sgyq5gvf1" path="res://Assets/Sycthe_9.png" id="10_sycthe9"]
+[ext_resource type="Texture2D" uid="uid://byxjgvxsxbh1d" path="res://Assets/Sycthe_10.png" id="11_sycthe10"]
+[ext_resource type="Texture2D" uid="uid://cjb4dbkbfxdqk" path="res://Assets/Scythe_11.png" id="12_scythe11"]
+[ext_resource type="Texture2D" uid="uid://bpacxfckxrqhg" path="res://Assets/Scythe_12.png" id="13_scythe12"]
+[ext_resource type="Texture2D" uid="uid://bkjolnxqhcbtq" path="res://Assets/Scythe_13.png" id="14_scythe13"]
+[ext_resource type="Texture2D" uid="uid://o2l8jcr2lyvk" path="res://Assets/Scythe_14.png" id="15_scythe14"]
+[ext_resource type="Texture2D" uid="uid://c7rqq5g15fhvq" path="res://Assets/Scythe_15.png" id="16_scythe15"]
+[ext_resource type="Texture2D" uid="uid://bd8pq5qvfyacf" path="res://Assets/Scythe_16.png" id="17_scythe16"]
+[ext_resource type="Texture2D" uid="uid://cvifcvsulqhp2" path="res://Assets/Scythe_17.png" id="18_scythe17"]
+[ext_resource type="Texture2D" uid="uid://bd4qyoyxrwny3" path="res://Assets/Scythe_18.png" id="19_scythe18"]
+[ext_resource type="Texture2D" uid="uid://cq3yqpgf5rbfg" path="res://Assets/Scythe_19.png" id="20_scythe19"]
+[ext_resource type="Texture2D" uid="uid://dh4p3xowk2lar" path="res://Assets/Scythe_20.png" id="21_scythe20"]
+[ext_resource type="Texture2D" uid="uid://cdnw47ld20bby" path="res://Assets/Scythe_21.png" id="22_scythe21"]
+[ext_resource type="Texture2D" uid="uid://diag11" path="res://Assets/Scythe_11-Diag_down.png" id="23_diag11"]
+[ext_resource type="Texture2D" uid="uid://diag12" path="res://Assets/Scythe_12-Diag_down.png" id="24_diag12"]
+[ext_resource type="Texture2D" uid="uid://diag13" path="res://Assets/Scythe_13-Diag_down.png" id="25_diag13"]
+[ext_resource type="Texture2D" uid="uid://diag14" path="res://Assets/Scythe_14-Diag_down.png" id="26_diag14"]
+[ext_resource type="Texture2D" uid="uid://diag15" path="res://Assets/Scythe_15-Diag_down.png" id="27_diag15"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_scythe"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("2_sycthe1")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("2_sycthe1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("3_sycthe2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("4_sycthe3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5_sycthe4")
+}, {
+"duration": 1.0,
+"texture": ExtResource("6_sycthe5")
+}, {
+"duration": 1.0,
+"texture": ExtResource("7_sycthe6")
+}, {
+"duration": 1.0,
+"texture": ExtResource("8_sycthe7")
+}, {
+"duration": 1.0,
+"texture": ExtResource("9_sycthe8")
+}, {
+"duration": 1.0,
+"texture": ExtResource("10_sycthe9")
+}, {
+"duration": 1.0,
+"texture": ExtResource("11_sycthe10")
+}, {
+"duration": 1.0,
+"texture": ExtResource("12_scythe11")
+}, {
+"duration": 1.0,
+"texture": ExtResource("13_scythe12")
+}, {
+"duration": 1.0,
+"texture": ExtResource("14_scythe13")
+}, {
+"duration": 1.0,
+"texture": ExtResource("15_scythe14")
+}, {
+"duration": 1.0,
+"texture": ExtResource("16_scythe15")
+}, {
+"duration": 1.0,
+"texture": ExtResource("17_scythe16")
+}, {
+"duration": 1.0,
+"texture": ExtResource("18_scythe17")
+}, {
+"duration": 1.0,
+"texture": ExtResource("19_scythe18")
+}, {
+"duration": 1.0,
+"texture": ExtResource("20_scythe19")
+}, {
+"duration": 1.0,
+"texture": ExtResource("21_scythe20")
+}, {
+"duration": 1.0,
+"texture": ExtResource("22_scythe21")
+}],
+"loop": false,
+"name": &"slash",
+"speed": 42.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("2_sycthe1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("3_sycthe2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("4_sycthe3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5_sycthe4")
+}, {
+"duration": 1.0,
+"texture": ExtResource("6_sycthe5")
+}, {
+"duration": 1.0,
+"texture": ExtResource("7_sycthe6")
+}, {
+"duration": 1.0,
+"texture": ExtResource("8_sycthe7")
+}, {
+"duration": 1.0,
+"texture": ExtResource("9_sycthe8")
+}, {
+"duration": 1.0,
+"texture": ExtResource("10_sycthe9")
+}, {
+"duration": 1.0,
+"texture": ExtResource("11_sycthe10")
+}, {
+"duration": 1.0,
+"texture": ExtResource("23_diag11")
+}, {
+"duration": 1.0,
+"texture": ExtResource("24_diag12")
+}, {
+"duration": 1.0,
+"texture": ExtResource("25_diag13")
+}, {
+"duration": 1.0,
+"texture": ExtResource("26_diag14")
+}, {
+"duration": 1.0,
+"texture": ExtResource("27_diag15")
+}, {
+"duration": 1.0,
+"texture": ExtResource("17_scythe16")
+}, {
+"duration": 1.0,
+"texture": ExtResource("18_scythe17")
+}, {
+"duration": 1.0,
+"texture": ExtResource("19_scythe18")
+}, {
+"duration": 1.0,
+"texture": ExtResource("20_scythe19")
+}, {
+"duration": 1.0,
+"texture": ExtResource("21_scythe20")
+}, {
+"duration": 1.0,
+"texture": ExtResource("22_scythe21")
+}],
+"loop": false,
+"name": &"slash_diag_down",
+"speed": 42.0
+}]
+
+[node name="Scythe" type="Node2D"]
+script = ExtResource("1_scythe")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+scale = Vector2(0.18, 0.18)
+sprite_frames = SubResource("SpriteFrames_scythe")
+animation = &"idle"
+autoplay = "idle"

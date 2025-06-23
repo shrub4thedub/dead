@@ -1,0 +1,264 @@
+[gd_scene load_steps=2 format=3 uid="uid://b4n7q8xar5vix"]
+
+[ext_resource type="Script" path="res://DebugUI.gd" id="1_debug"]
+
+[node name="DebugUI" type="CanvasLayer"]
+script = ExtResource("1_debug")
+
+[node name="Control" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="Panel" type="Panel" parent="Control"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -300.0
+offset_bottom = 600.0
+modulate = Color(1, 1, 1, 0.9)
+mouse_filter = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Control/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+
+[node name="Title" type="Label" parent="Control/Panel/VBoxContainer"]
+layout_mode = 2
+text = "Movement Debug (P to toggle)"
+horizontal_alignment = 1
+
+[node name="MaxSpeedContainer" type="HBoxContainer" parent="Control/Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="MaxSpeedLabel" type="Label" parent="Control/Panel/VBoxContainer/MaxSpeedContainer"]
+layout_mode = 2
+text = "Max Speed: 2500"
+custom_minimum_size = Vector2(150, 0)
+
+[node name="MaxSpeedSlider" type="HSlider" parent="Control/Panel/VBoxContainer/MaxSpeedContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 500.0
+max_value = 5000.0
+value = 2500.0
+
+[node name="AccelerationContainer" type="HBoxContainer" parent="Control/Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="AccelerationLabel" type="Label" parent="Control/Panel/VBoxContainer/AccelerationContainer"]
+layout_mode = 2
+text = "Acceleration: 600"
+custom_minimum_size = Vector2(150, 0)
+
+[node name="AccelerationSlider" type="HSlider" parent="Control/Panel/VBoxContainer/AccelerationContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 100.0
+max_value = 1500.0
+value = 600.0
+
+[node name="FrictionContainer" type="HBoxContainer" parent="Control/Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="FrictionLabel" type="Label" parent="Control/Panel/VBoxContainer/FrictionContainer"]
+layout_mode = 2
+text = "Friction: 600"
+custom_minimum_size = Vector2(150, 0)
+
+[node name="FrictionSlider" type="HSlider" parent="Control/Panel/VBoxContainer/FrictionContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 100.0
+max_value = 1500.0
+value = 600.0
+
+[node name="AirFrictionContainer" type="HBoxContainer" parent="Control/Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="AirFrictionLabel" type="Label" parent="Control/Panel/VBoxContainer/AirFrictionContainer"]
+layout_mode = 2
+text = "Air Friction: 150"
+custom_minimum_size = Vector2(150, 0)
+
+[node name="AirFrictionSlider" type="HSlider" parent="Control/Panel/VBoxContainer/AirFrictionContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 50.0
+max_value = 500.0
+value = 150.0
+
+[node name="BrakeForceContainer" type="HBoxContainer" parent="Control/Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="BrakeForceLabel" type="Label" parent="Control/Panel/VBoxContainer/BrakeForceContainer"]
+layout_mode = 2
+text = "Brake Force: 2000"
+custom_minimum_size = Vector2(150, 0)
+
+[node name="BrakeForceSlider" type="HSlider" parent="Control/Panel/VBoxContainer/BrakeForceContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 500.0
+max_value = 4000.0
+value = 2000.0
+
+[node name="TurnThresholdContainer" type="HBoxContainer" parent="Control/Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="TurnThresholdLabel" type="Label" parent="Control/Panel/VBoxContainer/TurnThresholdContainer"]
+layout_mode = 2
+text = "Turn Threshold: 200"
+custom_minimum_size = Vector2(150, 0)
+
+[node name="TurnThresholdSlider" type="HSlider" parent="Control/Panel/VBoxContainer/TurnThresholdContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 50.0
+max_value = 500.0
+value = 200.0
+
+[node name="BaseTurnBoostContainer" type="HBoxContainer" parent="Control/Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="BaseTurnBoostLabel" type="Label" parent="Control/Panel/VBoxContainer/BaseTurnBoostContainer"]
+layout_mode = 2
+text = "Base Turn Boost: 30"
+custom_minimum_size = Vector2(150, 0)
+
+[node name="BaseTurnBoostSlider" type="HSlider" parent="Control/Panel/VBoxContainer/BaseTurnBoostContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 10.0
+max_value = 100.0
+value = 30.0
+
+[node name="JumpVelocityContainer" type="HBoxContainer" parent="Control/Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="JumpVelocityLabel" type="Label" parent="Control/Panel/VBoxContainer/JumpVelocityContainer"]
+layout_mode = 2
+text = "Jump Velocity: -400"
+custom_minimum_size = Vector2(150, 0)
+
+[node name="JumpVelocitySlider" type="HSlider" parent="Control/Panel/VBoxContainer/JumpVelocityContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -800.0
+max_value = -200.0
+value = -400.0
+
+[node name="DashCooldownContainer" type="HBoxContainer" parent="Control/Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="DashCooldownLabel" type="Label" parent="Control/Panel/VBoxContainer/DashCooldownContainer"]
+layout_mode = 2
+text = "Dash Cooldown: 0.6"
+custom_minimum_size = Vector2(150, 0)
+
+[node name="DashCooldownSlider" type="HSlider" parent="Control/Panel/VBoxContainer/DashCooldownContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.1
+max_value = 2.0
+value = 0.6
+
+[node name="DashSpeedContainer" type="HBoxContainer" parent="Control/Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="DashSpeedLabel" type="Label" parent="Control/Panel/VBoxContainer/DashSpeedContainer"]
+layout_mode = 2
+text = "Dash Speed: 850"
+custom_minimum_size = Vector2(150, 0)
+
+[node name="DashSpeedSlider" type="HSlider" parent="Control/Panel/VBoxContainer/DashSpeedContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 300.0
+max_value = 1500.0
+value = 850.0
+
+[node name="DashDurationContainer" type="HBoxContainer" parent="Control/Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="DashDurationLabel" type="Label" parent="Control/Panel/VBoxContainer/DashDurationContainer"]
+layout_mode = 2
+text = "Dash Duration: 0.22"
+custom_minimum_size = Vector2(150, 0)
+
+[node name="DashDurationSlider" type="HSlider" parent="Control/Panel/VBoxContainer/DashDurationContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.01
+max_value = 1.0
+step = 0.01
+value = 0.22
+
+[node name="MinAirTimeContainer" type="HBoxContainer" parent="Control/Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="MinAirTimeLabel" type="Label" parent="Control/Panel/VBoxContainer/MinAirTimeContainer"]
+layout_mode = 2
+text = "Min Air Time: 0.25"
+custom_minimum_size = Vector2(150, 0)
+
+[node name="MinAirTimeSlider" type="HSlider" parent="Control/Panel/VBoxContainer/MinAirTimeContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 1.0
+value = 0.25
+
+[node name="MinSpeedDashContainer" type="HBoxContainer" parent="Control/Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="MinSpeedDashLabel" type="Label" parent="Control/Panel/VBoxContainer/MinSpeedDashContainer"]
+layout_mode = 2
+text = "Min Speed Dash: 100"
+custom_minimum_size = Vector2(150, 0)
+
+[node name="MinSpeedDashSlider" type="HSlider" parent="Control/Panel/VBoxContainer/MinSpeedDashContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 500.0
+value = 100.0
+
+[node name="RollMinSpeedContainer" type="HBoxContainer" parent="Control/Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="RollMinSpeedLabel" type="Label" parent="Control/Panel/VBoxContainer/RollMinSpeedContainer"]
+layout_mode = 2
+text = "Roll Min Speed: 180"
+custom_minimum_size = Vector2(150, 0)
+
+[node name="RollMinSpeedSlider" type="HSlider" parent="Control/Panel/VBoxContainer/RollMinSpeedContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 50.0
+max_value = 500.0
+value = 180.0
+
+[node name="RollMaxTimeContainer" type="HBoxContainer" parent="Control/Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="RollMaxTimeLabel" type="Label" parent="Control/Panel/VBoxContainer/RollMaxTimeContainer"]
+layout_mode = 2
+text = "Roll Max Time: 0.5"
+custom_minimum_size = Vector2(150, 0)
+
+[node name="RollMaxTimeSlider" type="HSlider" parent="Control/Panel/VBoxContainer/RollMaxTimeContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.1
+max_value = 2.0
+value = 0.5

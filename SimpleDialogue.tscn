@@ -1,0 +1,23 @@
+[gd_scene load_steps=2 format=3 uid="uid://tlfyfp838v0h"]
+
+[ext_resource type="Script" uid="uid://bsy7yf4kt31n" path="res://SimpleDialogue.gd" id="1"]
+
+[node name="SimpleDialogue" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1")
+
+[node name="DialogueText" type="Label" parent="."]
+visible = false
+layout_mode = 0
+offset_right = 400.0
+offset_bottom = 100.0
+text = "Dialogue text goes here..."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2

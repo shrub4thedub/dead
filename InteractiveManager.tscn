@@ -1,0 +1,28 @@
+[gd_scene load_steps=4 format=3 uid="uid://interactive_manager_123"]
+
+[ext_resource type="Script" path="res://InteractiveManager.gd" id="1"]
+[ext_resource type="Texture2D" path="res://Assets/Manager.PNG" id="2"]
+
+[sub_resource type="RectangleShape2D" id="1"]
+size = Vector2(100, 80)
+
+[node name="Manager" type="Area2D"]
+script = ExtResource("1")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(0, -105)
+scale = Vector2(0.2, 0.2)
+texture = ExtResource("2")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 40)
+shape = SubResource("1")
+
+[node name="PromptLabel" type="Label" parent="."]
+offset_left = -40.0
+offset_top = -60.0
+offset_right = 40.0
+offset_bottom = -40.0
+text = "Press F"
+horizontal_alignment = 1
+visible = false

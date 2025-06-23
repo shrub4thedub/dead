@@ -1,0 +1,27 @@
+[gd_scene load_steps=4 format=3 uid="uid://upr5iwmi6hom"]
+
+[ext_resource type="Script" path="res://Fish.gd" id="1_fish"]
+[ext_resource type="Texture2D" path="res://Assets/Fish.PNG" id="2_fish_texture"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_fish"]
+size = Vector2(64, 48)
+
+[node name="Fish" type="Area2D"]
+script = ExtResource("1_fish")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_fish_texture")
+scale = Vector2(0.5, 0.5)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_fish")
+
+[node name="InteractionPrompt" type="Label" parent="."]
+offset_left = -50.0
+offset_top = -60.0
+offset_right = 50.0
+offset_bottom = -40.0
+text = "Press SPACE to talk"
+horizontal_alignment = 1
+vertical_alignment = 1
+visible = false

@@ -1,0 +1,26 @@
+[gd_scene load_steps=3 format=3 uid="uid://interactive_fish_123"]
+
+[ext_resource type="Script" path="res://InteractiveFish.gd" id="1"]
+[ext_resource type="Texture2D" path="res://Assets/Fish.PNG" id="2"]
+
+[sub_resource type="RectangleShape2D" id="1"]
+size = Vector2(80, 60)
+
+[node name="Fish" type="Area2D"]
+script = ExtResource("1")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2")
+scale = Vector2(0.3, 0.3)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("1")
+
+[node name="PromptLabel" type="Label" parent="."]
+offset_left = -40.0
+offset_top = -50.0
+offset_right = 40.0
+offset_bottom = -30.0
+text = "Press F"
+horizontal_alignment = 1
+visible = false
