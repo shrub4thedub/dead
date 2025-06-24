@@ -6,6 +6,7 @@ var game_ui
 var debug_ui
 
 # Movement variables (adjustable via debug UI)
+var can_move = true  # Controls whether player can respond to movement input
 var max_speed = 2500.0  # High speed cap for advanced play
 var acceleration = 600.0
 var friction = 600.0  # Reduced friction for easier speed maintenance
@@ -196,6 +197,9 @@ var pre_ground_timer = 0.0
 var post_ground_timer = 0.0
 var roll_time_elapsed = 0.0
 var is_roll_leaping = false
+
+# Zipline system
+var is_on_zipline = false
 var roll_leap_timer = 0.0
 var air_roll_pending_brake = false  # Track if air roll should brake on landing
 
@@ -396,6 +400,31 @@ func reset_sprite_color_to_default():
 	color_state_priority = 0
 	color_state_timer = 0.0
 	# sprite.modulate = color_state_colors[ColorState.DEFAULT]  # Disabled to maintain original sprite color
+
+func set_zipline_mode(zipline_active: bool):
+	is_on_zipline = zipline_active
+	if zipline_active:
+		# Disable physics and input when entering zipline mode
+		can_move = false
+		# Stop any current movement states
+		is_dashing = false
+		is_charging_dash = false
+		is_rolling = false
+		is_air_rolling = false
+		is_wall_sliding = false
+		is_wall_climbing = false
+		# Release grapple if active
+		if is_grappling:
+			release_grapple()
+	else:
+		# Re-enable physics and input when exiting zipline mode
+		can_move = true
+
+func is_slashing() -> bool:
+	# Check if the scythe is currently performing a slash animation
+	if scythe and "is_slashing" in scythe:
+		return scythe.is_slashing
+	return false
 
 func update_sprite_color_state(delta: float):
 	# Handle timed color states
@@ -1658,6 +1687,10 @@ func update_coyote_time(delta):
 	coyote_timer = max(0.0, coyote_timer)
 
 func _physics_process(delta):
+	# Skip all physics processing if on zipline
+	if is_on_zipline:
+		return
+	
 	update_sprite_color_state(delta)
 	update_input_buffers(delta)
 	update_momentum_preservation(delta)
@@ -1703,7 +1736,7 @@ func _physics_process(delta):
 	
 	var direction = 0
 	# Prevent movement input while rolling, but allow during movement impairment and air rolling
-	if not is_rolling or is_movement_impaired or is_air_rolling:
+	if can_move and (not is_rolling or is_movement_impaired or is_air_rolling):
 		if Input.is_key_pressed(KEY_A) and blocked_direction != -1:
 			direction -= 1
 		if Input.is_key_pressed(KEY_D) and blocked_direction != 1:

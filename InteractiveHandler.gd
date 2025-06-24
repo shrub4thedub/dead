@@ -80,6 +80,9 @@ var post_mission_dialogue = [
 	],
 	[
 		"Get moving, we got a deadline to meet, or this kid might trigger the apocalypse or something.",
+	],
+	[
+		"The train station is now unlocked for you. Go catch that train to Wyoming.",
 	]
 ]
 
@@ -132,6 +135,13 @@ func talk_to_handler():
 			var current_conversation = post_mission_dialogue[post_mission_index]
 			dialogue_system.start_conversation("Handler", current_conversation)
 			post_mission_index = (post_mission_index + 1) % post_mission_dialogue.size()
+			
+			# Check if we just finished the final dialogue that unlocks train station
+			if post_mission_index == 0 and post_mission_dialogue.size() > 0:
+				# We've completed all post-mission dialogue, unlock train station
+				var main_scene = get_tree().get_first_node_in_group("main_scene")
+				if main_scene and main_scene.has_method("unlock_train_station"):
+					main_scene.unlock_train_station()
 		else:
 			# Check if player has spoken to manager first
 			check_manager_interaction()

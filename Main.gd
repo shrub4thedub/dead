@@ -8,9 +8,13 @@ var title_text
 var is_title_active = true
 
 func _ready():
+	# Add to main scene group
+	add_to_group("main_scene")
 	setup_effects_system()
 	setup_title_screen()
 	connect_coin_signals()
+	# Setup train station door
+	call_deferred("setup_train_station_door")
 
 func setup_effects_system():
 	# Create effects manager
@@ -29,6 +33,19 @@ func setup_effects_system():
 	if debug_ui_node and player_node:
 		player_node.debug_ui = debug_ui_node
 		print("Main: Connected debug UI to player")
+	
+	# Setup background music
+	setup_background_music()
+
+func setup_background_music():
+	var bgm_player = get_node_or_null("BGM")
+	if bgm_player:
+		bgm_player.autoplay = true
+		bgm_player.volume_db = -10.0
+		# Make sure it loops
+		if bgm_player.stream:
+			bgm_player.stream.loop = true
+		print("Background music setup complete")
 
 func setup_title_screen():
 	# Create title screen overlay
@@ -86,6 +103,10 @@ func setup_title_screen():
 func _input(event):
 	if is_title_active and event is InputEventMouseButton and event.pressed:
 		hide_title_screen()
+	
+	# Debug: Press Q to go to Wyoming level
+	if event is InputEventKey and event.pressed and event.keycode == KEY_Q:
+		get_tree().change_scene_to_file("res://NewLevel.tscn")
 
 func hide_title_screen():
 	if title_screen and is_title_active:
@@ -127,3 +148,25 @@ func _on_coin_collected():
 	print("Main: Coin collected!")
 	if effects_manager:
 		effects_manager.add_combo("cashgrab")
+
+func setup_train_station_door():
+	# Initially block the train station door
+	var door = get_node_or_null("Door")
+	if door:
+		door.is_locked = true
+		print("Train station door is locked until Handler dialogue complete")
+
+func unlock_train_station():
+	var door = get_node_or_null("Door")
+	if door:
+		door.is_locked = false
+		print("Train station door is now unlocked!")
+		# Add visual feedback
+		var label = get_node_or_null("UnlockLabel")
+		if label:
+			label.visible = true
+			label.text = "Train Station Unlocked!"
+			# Fade out after 3 seconds
+			var tween = create_tween()
+			tween.tween_property(label, "modulate:a", 1.0, 0.0)  # Keep visible
+			tween.tween_property(label, "modulate:a", 0.0, 1.0).set_delay(3.0)

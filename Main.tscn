@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3 uid="uid://bmi8i8c54oh27"]
+[gd_scene load_steps=15 format=3 uid="uid://bmi8i8c54oh27"]
 
 [ext_resource type="Script" uid="uid://j60vkqlbbdmx" path="res://Main.gd" id="1_8v5xj"]
 [ext_resource type="PackedScene" uid="uid://b72bwutmwgfog" path="res://Player.tscn" id="2_8v5xj"]
@@ -13,6 +13,8 @@
 [ext_resource type="PackedScene" uid="uid://chandler001" path="res://InteractiveHandler.tscn" id="13_handler"]
 [ext_resource type="PackedScene" path="res://Door.tscn" id="14_door"]
 [ext_resource type="PackedScene" uid="uid://b4n7q8xar5vix" path="res://DebugUI.tscn" id="15_debug"]
+[ext_resource type="PackedScene" path="res://Zipline.tscn" id="16_zipline"]
+[ext_resource type="AudioStream" uid="uid://deadtheme" path="res://Assets/Dead.mp3" id="17_theme"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_8v5xj")
@@ -469,3 +471,25 @@ position = Vector2(-4573, 349)
 [node name="SimpleDialogue" parent="." instance=ExtResource("11_dialogue")]
 
 [node name="DebugUI" parent="." instance=ExtResource("15_debug")]
+
+[node name="UnlockLabel" type="Label" parent="."]
+visible = false
+offset_left = 400.0
+offset_top = 50.0
+offset_right = 800.0
+offset_bottom = 100.0
+text = "Train Station Unlocked!"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TestZipline" parent="." instance=ExtResource("16_zipline")]
+position = Vector2(-1476, -181)
+rotation = 0.0738595
+end_position = Vector2(400, 150)
+
+[node name="BGM" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("17_theme")
+autoplay = true
+volume_db = -10.0
+
+
