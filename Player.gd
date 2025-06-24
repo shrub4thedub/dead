@@ -164,6 +164,7 @@ var wall_contact_timer = 0.0
 var wall_direction = 0
 var is_wall_climbing = false
 var wall_climb_timer = 0.0
+var wall_climb_direction = 0  # Store the wall direction when climb starts
 var has_wall_kicked = false
 var can_wall_kick = false
 var slash_effect_timer = 0.0
@@ -692,6 +693,24 @@ func respawn():
 		var scene_name = get_tree().current_scene.name
 		if scene_name != "InterDimensionalTrainStation":
 			camera.position = Vector2(0, 2)
+	
+	# Reset key bulb and wall system
+	reset_key_system()
+
+func reset_key_system():
+	# Reset all key bulbs
+	var key_bulbs = get_tree().get_nodes_in_group("key_bulbs")
+	for bulb in key_bulbs:
+		if bulb.has_method("reset"):
+			bulb.reset()
+	
+	# Reset all key walls
+	var key_walls = get_tree().get_nodes_in_group("key_walls")
+	for wall in key_walls:
+		if wall.has_method("reset"):
+			wall.reset()
+	
+	print("Key system reset")
 
 func update_visual_effects(delta):
 	if not effects_manager:
@@ -1823,11 +1842,49 @@ func _physics_process(delta):
 	elif is_wall_climbing:
 		wall_climb_timer -= delta
 		velocity.y = -WALL_CLIMB_SPEED
-		if wall_climb_timer <= 0:
-			# Speed-based scaling: wall kick velocity increases with approach speed
+		
+		# Check if still touching wall during climb (hybrid approach)
+		var still_touching_wall = false
+		
+		# Method 1: Check Godot's built-in wall detection (works when touching)
+		if is_on_wall_only():
+			var current_wall_normal = get_wall_normal()
+			var current_wall_direction = -sign(current_wall_normal.x)
+			if current_wall_direction == wall_climb_direction:
+				still_touching_wall = true
+		
+		# Method 2: Raycast check for when not holding direction but still touching wall
+		if not still_touching_wall:
+			var space_state = get_world_2d().direct_space_state
+			
+			# Cast from player edge in the climb direction
+			var player_half_width = 24.0  # Player collision box is 48px wide
+			var ray_start = global_position + Vector2(wall_climb_direction * player_half_width * 0.8, 0)  # Start from near player edge
+			var ray_end = global_position + Vector2(wall_climb_direction * (player_half_width + 8.0), 0)  # Short cast beyond edge
+			var query = PhysicsRayQueryParameters2D.create(ray_start, ray_end)
+			query.exclude = [self]  # Don't hit the player
+			var result = space_state.intersect_ray(query)
+			
+			# If we hit something close to the player edge, we're still touching
+			if result:
+				still_touching_wall = true
+		
+		if not still_touching_wall:
+			# No longer touching wall - cancel wall climb without kicking
+			is_wall_climbing = false
+			clear_sprite_color_state(ColorState.WALL_CLIMBING)
+			is_wall_sliding = false
+			wall_contact_timer = 0.0
+			can_wall_kick = false
+			# Reduce upward velocity to prevent excessive launch
+			if velocity.y < 0:
+				velocity.y *= 0.65  # Keep good upward momentum but not full climb speed
+			print("Wall climb cancelled - no longer touching wall")
+		elif wall_climb_timer <= 0:
+			# Still touching wall and timer expired - perform wall kick
 			var approach_speed = abs(velocity.x)
 			var speed_multiplier = 1.0 + min(approach_speed / 800.0, 0.5)  # Up to 50% boost
-			velocity.x = -wall_direction * WALL_KICK_VELOCITY_X * speed_multiplier
+			velocity.x = -wall_climb_direction * WALL_KICK_VELOCITY_X * speed_multiplier
 			velocity.y = WALL_KICK_VELOCITY_Y * speed_multiplier
 			is_wall_climbing = false
 			clear_sprite_color_state(ColorState.WALL_CLIMBING)
@@ -1837,6 +1894,7 @@ func _physics_process(delta):
 			if not has_wall_kicked:
 				has_used_air_dash = false
 			has_wall_kicked = true
+			print("Wall kick executed - still touching wall")
 
 	slash_cooldown -= delta * (1.0 / combo_cooldown_reduction)
 	dash_cooldown -= delta * (1.0 / combo_cooldown_reduction)
@@ -2006,6 +2064,7 @@ func _physics_process(delta):
 				end_air_roll()
 			is_wall_climbing = true
 			wall_climb_timer = WALL_CLIMB_DURATION
+			wall_climb_direction = wall_direction  # Store the wall direction at start
 			set_sprite_color_state(ColorState.WALL_CLIMBING, WALL_CLIMB_DURATION)
 			buffered_dash = false  # Consume the buffered input
 			if effects_manager:

@@ -1,0 +1,16 @@
+[gd_scene load_steps=4 format=3 uid="uid://du1emeo84kaxv"]
+
+[ext_resource type="Script" uid="uid://dsf40fwpcswr6" path="res://Isle.gd" id="1_isle"]
+[ext_resource type="Texture2D" uid="uid://bfx8n3naqk2a7" path="res://Assets/Isle_new.png" id="2_isle"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_isle"]
+size = Vector2(400, 100)
+
+[node name="Isle" type="StaticBody2D"]
+script = ExtResource("1_isle")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_isle")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_isle")

@@ -22,6 +22,9 @@ func _ready():
 	
 	# Setup background music
 	call_deferred("setup_background_music")
+	
+	# Setup key bulb system
+	call_deferred("setup_key_system")
 
 func setup_background_music():
 	var bgm_player = get_node_or_null("BGM")
@@ -49,3 +52,25 @@ func setup_train_station_door():
 	if door:
 		door.next_scene_path = "res://InterDimensionalTrainStation.tscn"
 		print("Train station door configured to go back to train station")
+
+func setup_key_system():
+	# Set up the key bulb group
+	var group_name = "group1"
+	
+	# Configure key bulbs
+	var key_bulb1 = get_node_or_null("KeyBulb1")
+	var key_bulb2 = get_node_or_null("KeyBulb2")
+	var key_bulb3 = get_node_or_null("KeyBulb3")
+	
+	if key_bulb1:
+		key_bulb1.key_wall_group = group_name
+	if key_bulb2:
+		key_bulb2.key_wall_group = group_name
+	if key_bulb3:
+		key_bulb3.key_wall_group = group_name
+	
+	# Configure key wall
+	var key_wall = get_node_or_null("KeyWall1")
+	if key_wall:
+		key_wall.group_name = group_name
+		print("Key system configured - Group: ", group_name)

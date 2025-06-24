@@ -1,0 +1,16 @@
+[gd_scene load_steps=4 format=3 uid="uid://dah00bd3n6mgt"]
+
+[ext_resource type="Script" path="res://IsleSmall.gd" id="1_islesmall"]
+[ext_resource type="Texture2D" uid="uid://cnx7r4p8mk5b9" path="res://Assets/Isle_small.png" id="2_islesmall"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_islesmall"]
+size = Vector2(200, 50)
+
+[node name="IsleSmall" type="StaticBody2D"]
+script = ExtResource("1_islesmall")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_islesmall")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_islesmall")
