@@ -233,6 +233,7 @@ const POST_GROUND_WINDOW = 0.3  # Window after landing to start roll
 const ROLL_MIN_DISTANCE = 100.0  # Minimum distance from ground to allow roll
 const ROLL_LEAP_DURATION = 0.12  # Time to stay in roll state during leap
 const AIR_ROLL_FALL_MULTIPLIER = 2.0  # How much faster you fall when air rolling
+const AIR_ROLL_CONTROL_MULTIPLIER = 1.8  # Moderate air control increase when air rolling
 const ROLL_BRAKE_MIN_DISTANCE = 150.0  # Minimum distance required for ledge brake
 
 # Centralized sprite color state management
@@ -2126,8 +2127,25 @@ func _physics_process(delta):
 					print("Movement impairment first frame - velocity forced to 0")
 				else:
 					var acceleration_multiplier = 1.0
+					
 					if is_movement_impaired:
 						acceleration_multiplier = MOVEMENT_IMPAIRMENT_FACTOR
+					elif is_air_rolling and not is_on_floor():
+						# Only apply enhanced control when changing direction or at lower speeds
+						var current_speed = abs(velocity.x)
+						var is_changing_direction = (direction > 0 and velocity.x < 0) or (direction < 0 and velocity.x > 0)
+						var is_moving_same_direction = (direction > 0 and velocity.x > 0) or (direction < 0 and velocity.x < 0)
+						
+						if is_changing_direction:
+							# Changing direction - enhanced control
+							acceleration_multiplier = AIR_ROLL_CONTROL_MULTIPLIER * 1.4
+						elif current_speed < max_speed * 0.7:
+							# Below 70% max speed - moderate enhanced control
+							acceleration_multiplier = AIR_ROLL_CONTROL_MULTIPLIER
+						elif is_moving_same_direction and current_speed >= max_speed * 0.9:
+							# Already moving fast in same direction - no speed boost
+							acceleration_multiplier = 0.3
+					
 					velocity.x += direction * acceleration * delta * acceleration_multiplier
 					velocity.x = clamp(velocity.x, -max_speed, max_speed)
 			
@@ -2140,6 +2158,9 @@ func _physics_process(delta):
 			# Increase friction during movement impairment
 			elif is_movement_impaired:
 				friction_force *= 3.0  # Increased friction during impairment
+			# Reduce air friction when air rolling to allow better control
+			elif is_air_rolling and not is_on_floor():
+				friction_force *= 0.3  # Much lower air resistance when air rolling
 			velocity.x = move_toward(velocity.x, 0, friction_force * delta)
 
 	# Update grinding
