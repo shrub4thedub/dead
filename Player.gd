@@ -39,7 +39,8 @@ const MAX_GROUND_TIME_BONUS = 5.0
 @onready var scythe = $Scythe
 
 # Dash direction indicator
-var dash_direction_indicator: Line2D
+var dash_direction_indicator: Sprite2D
+var is_arrow_animating = false
 
 # Animation variables
 var base_scale = Vector2(1, 1)
@@ -229,6 +230,13 @@ var roll_sprite: Sprite2D
 var roll_entry_textures = []
 var is_roll_exiting = false
 var roll_entry_frame = 0
+
+# Dive animation variables
+var dive_textures = []
+var dive_impact_frame = 0
+var is_dive_impacting = false
+var dive_impact_timer = 0.0
+const DIVE_IMPACT_FRAME_DURATION = 1.0 / 36.0  # 36 FPS for dive impact (faster than roll)
 const ROLL_ANIMATION_FRAMES = 10
 const ROLL_ANIMATION_FPS = 20.0
 const ROLL_FRAME_DURATION = 1.0 / ROLL_ANIMATION_FPS  # 0.05 seconds per frame
@@ -344,7 +352,17 @@ func load_roll_frames():
 		else:
 			print("Warning: Could not load roll entry frame: ", texture_path)
 	
-	print("Loaded ", roll_frame_textures.size(), " roll frames and ", roll_entry_textures.size(), " roll entry frames")
+	# Load dive textures
+	dive_textures.clear()
+	for i in range(1, 4):  # Dive_1.png, Dive_2.png, Dive_3.png
+		var texture_path = "res://Assets/Dive_" + str(i) + ".png"
+		var texture = load(texture_path)
+		if texture:
+			dive_textures.append(texture)
+		else:
+			print("Warning: Could not load dive frame: ", texture_path)
+	
+	print("Loaded ", roll_frame_textures.size(), " roll frames, ", roll_entry_textures.size(), " roll entry frames, and ", dive_textures.size(), " dive frames")
 
 func setup_references():
 	effects_manager = get_tree().get_first_node_in_group("effects_manager")
@@ -823,7 +841,7 @@ func update_sprite_animation():
 	var target_animation = "idle"
 	
 	# Check for rolling first - use custom roll sprite system
-	if is_rolling or is_roll_leaping:
+	if is_rolling or is_roll_leaping or is_air_rolling or is_dive_impacting:
 		# Custom roll animation is handled by update_roll_animation and roll_sprite
 		# Don't interfere with main sprite during rolling
 		return
@@ -1226,7 +1244,7 @@ func start_roll():
 		effects_manager.add_combo("roll")
 
 func update_roll_animation(delta):
-	if not is_rolling and not is_roll_leaping and not is_air_rolling:
+	if not is_rolling and not is_roll_leaping and not is_air_rolling and not is_dive_impacting:
 		return
 	
 	# Check if we have loaded roll frames
@@ -1235,6 +1253,13 @@ func update_roll_animation(delta):
 	
 	# Update animation timer
 	roll_animation_timer += delta
+	
+	# Update dive impact timer
+	if is_dive_impacting:
+		dive_impact_timer += delta
+		if dive_impact_timer >= DIVE_IMPACT_FRAME_DURATION:
+			dive_impact_frame += 1
+			dive_impact_timer = 0.0
 	
 	# Calculate current frame including entry frames
 	# Total frames = 2 entry frames + 10 roll frames = 12 frames
@@ -1264,15 +1289,16 @@ func update_roll_animation(delta):
 					roll_animation_completed = true
 					roll_animation_timer = 0.0  # Reset timer for looping
 	elif is_air_rolling:
-		# During air roll, start with entry frames then loop roll frames
-		if target_frame < 2 and roll_entry_textures.size() >= 2:
-			# Show entry frames
-			texture_to_use = roll_entry_textures[target_frame]
-		else:
-			# Loop roll frames continuously 
-			var roll_frame_index = (target_frame - 2) % ROLL_ANIMATION_FRAMES
-			if roll_frame_index >= 0 and roll_frame_index < roll_frame_textures.size():
-				texture_to_use = roll_frame_textures[roll_frame_index]
+		# During air roll (dive), use Dive_1 sprite
+		if dive_textures.size() > 0:
+			texture_to_use = dive_textures[0]  # Dive_1.png
+	elif is_dive_impacting:
+		# During dive impact, play Dive_2 then Dive_3
+		if dive_textures.size() >= 3:
+			if dive_impact_frame == 0:
+				texture_to_use = dive_textures[1]  # Dive_2.png
+			else:
+				texture_to_use = dive_textures[2]  # Dive_3.png
 	else:
 		# During ground roll, play entry frames then loop roll frames until roll ends
 		if target_frame < 2 and roll_entry_textures.size() >= 2:
@@ -1288,12 +1314,35 @@ func update_roll_animation(delta):
 	if texture_to_use and roll_sprite:
 		roll_sprite.texture = texture_to_use
 		
-		# Flip sprite based on roll direction
-		# Positive roll_direction = moving right (normal), negative = moving left (flipped)
-		if roll_direction < 0:
-			roll_sprite.scale.x = -abs(roll_sprite.scale.x)  # Flip horizontally
+		# Apply scale based on sprite type
+		var base_scale = 0.125  # Default roll scale
+		if is_air_rolling and dive_textures.size() > 0 and texture_to_use == dive_textures[0]:
+			# Make Dive_1 sprite slightly bigger
+			base_scale = 0.135  # 8% larger than normal roll sprites
+		elif is_dive_impacting and dive_textures.size() >= 2:
+			if texture_to_use == dive_textures[1]:  # Dive_2
+				base_scale = 0.130  # 4% larger than normal roll sprites
+			else:  # Dive_3 or other
+				base_scale = 0.125
+		
+		# Handle rotation and flipping based on sprite type
+		if is_air_rolling and dive_textures.size() > 0 and texture_to_use == dive_textures[0]:
+			# Dive_1 sprite: rotate based on velocity direction
+			var velocity_angle = velocity.angle()
+			roll_sprite.rotation = velocity_angle - PI/2  # Subtract 90 degrees to face velocity direction
+			
+			# No horizontal flipping for dive sprite - rotation handles direction
+			roll_sprite.scale = Vector2(base_scale, base_scale)
 		else:
-			roll_sprite.scale.x = abs(roll_sprite.scale.x)   # Normal orientation
+			# Regular roll sprites: use normal flipping logic, no rotation
+			roll_sprite.rotation = 0.0  # Reset rotation for non-dive sprites
+			
+			# Flip sprite based on roll direction
+			# Positive roll_direction = moving right (normal), negative = moving left (flipped)
+			if roll_direction < 0:
+				roll_sprite.scale = Vector2(-base_scale, base_scale)  # Flip horizontally
+			else:
+				roll_sprite.scale = Vector2(base_scale, base_scale)   # Normal orientation
 
 func update_air_roll(delta):
 	if not is_air_rolling:
@@ -1306,24 +1355,26 @@ func update_air_roll(delta):
 	if roll_key_held:
 		roll_key_held_duration += delta
 	
-	# Check if we've landed - transition to ground roll
+	# Check if we've landed - transition to ground roll with dive impact
 	if is_on_floor():
 		is_air_rolling = false
+		is_dive_impacting = true
+		dive_impact_frame = 0
+		dive_impact_timer = 0.0
+		
+		# Make sure roll sprite is visible for dive impact and hide main sprite
+		if roll_sprite:
+			sprite.visible = false
+			roll_sprite.visible = true
 		
 		# Only transition to ground roll if speed is high enough
 		var current_speed = abs(velocity.x)
 		if current_speed >= roll_min_speed:
-			# Check if we should start with a brake setup
-			if air_roll_pending_brake and roll_key_held:
-				# Transition to ground roll but mark it for immediate brake
-				_transition_to_ground_roll()
-				# Transfer the key hold duration and set up for brake
-				should_brake_on_roll_end = true
-			else:
-				# Transition to normal ground roll
-				_transition_to_ground_roll()
+			# Start dive impact animation, then transition to ground roll
+			_start_dive_impact_to_ground_roll()
 		else:
-			# Too slow for ground roll - just end air roll
+			# Too slow for ground roll - just end air roll with dive impact
+			_start_dive_impact_end()
 			clear_sprite_color_state(ColorState.ROLLING)
 			restore_normal_sprite()
 			print("Air roll ended - too slow for ground roll (", current_speed, " < ", roll_min_speed, ")")
@@ -1452,6 +1503,40 @@ func restore_normal_sprite():
 	sprite.play("idle")
 
 func end_air_roll():
+	# Play exit animation first, then complete air roll ending
+	if roll_entry_textures.size() >= 2 and roll_sprite:
+		# Show exit frames quickly (same as end_roll)
+		roll_sprite.texture = roll_entry_textures[1]  # Roll_Entry_2
+		
+		# Apply direction flipping for exit animation
+		if roll_direction < 0:
+			roll_sprite.scale.x = -abs(roll_sprite.scale.x)  # Flip horizontally
+		else:
+			roll_sprite.scale.x = abs(roll_sprite.scale.x)   # Normal orientation
+		
+		# Set timer to show first entry frame then complete
+		var timer1 = get_tree().create_timer(0.05)  # 50ms for second frame
+		timer1.timeout.connect(_show_air_roll_exit_frame_1)
+		return
+	
+	# If no exit animation, end immediately
+	_end_air_roll_complete()
+
+func _show_air_roll_exit_frame_1():
+	if roll_sprite and roll_entry_textures.size() >= 1:
+		roll_sprite.texture = roll_entry_textures[0]  # Roll_Entry_1
+		
+		# Apply direction flipping for exit animation
+		if roll_direction < 0:
+			roll_sprite.scale.x = -abs(roll_sprite.scale.x)  # Flip horizontally
+		else:
+			roll_sprite.scale.x = abs(roll_sprite.scale.x)   # Normal orientation
+	
+	# Complete the air roll after showing first frame
+	var timer2 = get_tree().create_timer(0.05)  # 50ms for first frame
+	timer2.timeout.connect(_end_air_roll_complete)
+
+func _end_air_roll_complete():
 	is_air_rolling = false
 	air_roll_pending_brake = false
 	
@@ -1459,6 +1544,62 @@ func end_air_roll():
 	roll_animation_timer = 0.0
 	roll_current_frame = 0
 	roll_animation_completed = false
+	
+	# Restore normal sprite visibility
+	if roll_sprite:
+		roll_sprite.visible = false
+	sprite.visible = true
+	clear_sprite_color_state(ColorState.ROLLING)
+
+func _start_dive_impact_to_ground_roll():
+	# Play Dive_2 -> Dive_3 -> transition to ground roll
+	var timer = get_tree().create_timer(DIVE_IMPACT_FRAME_DURATION)
+	timer.timeout.connect(_dive_impact_frame_2_complete)
+
+func _dive_impact_frame_2_complete():
+	# Move to Dive_3
+	dive_impact_frame = 1
+	var timer = get_tree().create_timer(DIVE_IMPACT_FRAME_DURATION)
+	timer.timeout.connect(_dive_impact_to_ground_roll_complete)
+
+func _dive_impact_to_ground_roll_complete():
+	# End dive impact and transition to ground roll
+	is_dive_impacting = false
+	dive_impact_frame = 0
+	dive_impact_timer = 0.0
+	
+	# Check if we should start with a brake setup
+	if air_roll_pending_brake and roll_key_held:
+		# Transition to ground roll but mark it for immediate brake
+		_transition_to_ground_roll()
+		# Transfer the key hold duration and set up for brake
+		should_brake_on_roll_end = true
+	else:
+		# Transition to normal ground roll
+		_transition_to_ground_roll()
+
+func _start_dive_impact_end():
+	# Play Dive_2 -> Dive_3 -> end (no ground roll)
+	var timer = get_tree().create_timer(DIVE_IMPACT_FRAME_DURATION)
+	timer.timeout.connect(_dive_impact_frame_2_end_complete)
+
+func _dive_impact_frame_2_end_complete():
+	# Move to Dive_3
+	dive_impact_frame = 1
+	var timer = get_tree().create_timer(DIVE_IMPACT_FRAME_DURATION)
+	timer.timeout.connect(_dive_impact_end_complete)
+
+func _dive_impact_end_complete():
+	# End dive impact completely
+	is_dive_impacting = false
+	dive_impact_frame = 0
+	dive_impact_timer = 0.0
+	
+	# Restore normal sprite visibility
+	if roll_sprite:
+		roll_sprite.visible = false
+	sprite.visible = true
+	restore_normal_sprite()
 	
 	clear_sprite_color_state(ColorState.ROLLING)
 	
@@ -2033,10 +2174,10 @@ func _physics_process(delta):
 		slash_effect.visible = false
 	
 	var can_dash = not is_on_floor() and dash_cooldown <= 0 and air_time >= min_air_time_for_dash and velocity.length() >= min_speed_for_dash and not has_used_air_dash and not is_wall_sliding
-	dash_icon.visible = can_dash
+	dash_icon.visible = false
 	
 	# Enhanced wall icon feedback
-	wall_icon.visible = can_wall_kick
+	wall_icon.visible = false
 	if can_wall_kick and wall_icon:
 		# Pulse effect for wall kick availability
 		var pulse_alpha = 0.7 + 0.3 * sin(Time.get_ticks_msec() * 0.008)
@@ -2223,6 +2364,9 @@ func _physics_process(delta):
 			has_used_air_dash = true
 			buffered_dash = false  # Consume the buffered input
 			
+			# Animate arrow shooting forward
+			animate_arrow_dash()
+			
 			if effects_manager:
 				effects_manager.add_combo("air_dash")
 				effects_manager.emit_energy(global_position, Color.RED)
@@ -2374,6 +2518,14 @@ func _physics_process(delta):
 	var pre_move_velocity = velocity
 	move_and_slide()
 	
+	# Update roll systems
+	update_air_roll(delta)
+	update_roll(delta)
+	
+	# Update dive impact animation if needed
+	if is_dive_impacting:
+		update_roll_animation(delta)
+	
 	# Enforce movement impairment after move_and_slide
 	if movement_impairment_first_frame:
 		velocity.x = 0.0  # Ensure brake persists even after move_and_slide
@@ -2429,44 +2581,73 @@ func stop_grinding():
 		effects_manager.emit_energy(global_position, Color(1.0, 0.8, 0.2, 1.0))
 
 func setup_dash_indicator():
-	dash_direction_indicator = Line2D.new()
-	add_child(dash_direction_indicator)
-	dash_direction_indicator.default_color = Color(1.0, 0.8, 0.2, 0.9)  # Orange/yellow
-	dash_direction_indicator.width = 5.0
+	# Create arrow sprite
+	dash_direction_indicator = Sprite2D.new()
+	dash_direction_indicator.texture = load("res://Assets/Arrow.PNG")
+	dash_direction_indicator.scale = Vector2(0.1, 0.1)  # Scale down the arrow
 	dash_direction_indicator.z_index = 1
 	dash_direction_indicator.visible = false
-	dash_direction_indicator.round_precision = 8
+	add_child(dash_direction_indicator)
 
 func update_dash_indicator():
+	# Don't update indicator if arrow is currently animating
+	if is_arrow_animating:
+		return
+		
 	# Only show indicator when in air and dash is available
 	var should_show = not is_on_floor() and dash_cooldown <= 0 and air_time >= min_air_time_for_dash and velocity.length() >= min_speed_for_dash and not has_used_air_dash and not is_wall_sliding
 	
 	if should_show:
 		dash_direction_indicator.visible = true
 		var dash_dir = get_precise_dash_direction()
-		var indicator_length = 40.0
+		var indicator_distance = 80.0  # Increased radius from 40.0
 		
 		# Add pulsing effect
 		var pulse = 0.8 + 0.2 * sin(Time.get_ticks_msec() * 0.006)
 		dash_direction_indicator.modulate.a = pulse
 		
-		# Clear and redraw the indicator line
-		dash_direction_indicator.clear_points()
-		dash_direction_indicator.add_point(Vector2.ZERO)  # Start at player center
-		dash_direction_indicator.add_point(dash_dir * indicator_length)  # Point in dash direction
-		
-		# Add arrowhead
-		var arrow_size = 10.0
-		var arrow_angle = 0.4  # radians
-		var arrow_tip = dash_dir * indicator_length
-		var arrow_left = arrow_tip + Vector2(cos(dash_dir.angle() + PI + arrow_angle), sin(dash_dir.angle() + PI + arrow_angle)) * arrow_size
-		var arrow_right = arrow_tip + Vector2(cos(dash_dir.angle() + PI - arrow_angle), sin(dash_dir.angle() + PI - arrow_angle)) * arrow_size
-		
-		dash_direction_indicator.add_point(arrow_left)
-		dash_direction_indicator.add_point(arrow_tip)
-		dash_direction_indicator.add_point(arrow_right)
+		# Position the arrow sprite at the dash direction with increased radius
+		dash_direction_indicator.position = dash_dir * indicator_distance
+		dash_direction_indicator.rotation = dash_dir.angle()
 	else:
 		dash_direction_indicator.visible = false
+
+func animate_arrow_dash():
+	if not dash_direction_indicator:
+		return
+	
+	# Set animation flag to prevent normal indicator updates
+	is_arrow_animating = true
+	
+	# Keep arrow visible but don't move it yet - wait for charge to complete
+	dash_direction_indicator.visible = true
+	var dash_dir = get_precise_dash_direction()
+	var start_distance = 80.0
+	var end_distance = 200.0
+	
+	# Set initial position and rotation
+	dash_direction_indicator.position = dash_dir * start_distance
+	dash_direction_indicator.rotation = dash_dir.angle()
+	dash_direction_indicator.modulate.a = 1.0
+	
+	# Calculate charge delay based on current charge_timer value
+	var charge_delay = max(charge_timer, 0.0)
+	
+	# Create tween for shooting animation
+	var tween = create_tween()
+	tween.set_parallel(true)  # Allow multiple properties to animate simultaneously
+	
+	# Wait for charge delay, then animate position shooting forward with easing
+	tween.tween_property(dash_direction_indicator, "position", dash_dir * end_distance, 0.5).set_delay(charge_delay).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	
+	# Fade out while shooting (starts immediately when shooting begins)
+	tween.tween_property(dash_direction_indicator, "modulate:a", 0.0, 0.5).set_delay(charge_delay)
+	
+	# Hide arrow and reset animation flag when animation completes
+	tween.tween_callback(func(): 
+		dash_direction_indicator.visible = false
+		is_arrow_animating = false
+	).set_delay(charge_delay + 0.5)
 
 func trigger_landing_animation():
 	# Stop any existing landing animation
