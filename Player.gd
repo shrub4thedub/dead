@@ -159,6 +159,7 @@ var charge_timer = 0.0
 var stored_velocity = Vector2.ZERO
 var dash_direction = Vector2.ZERO
 var has_used_air_dash = false
+var is_dashing_backward = false  # Track if current dash is backward
 var is_wall_sliding = false
 var wall_contact_timer = 0.0
 var wall_direction = 0
@@ -223,6 +224,11 @@ var roll_current_frame = 0
 var roll_animation_completed = false
 var roll_frame_textures = []
 var roll_sprite: Sprite2D
+
+# Roll entry/exit animation variables
+var roll_entry_textures = []
+var is_roll_exiting = false
+var roll_entry_frame = 0
 const ROLL_ANIMATION_FRAMES = 10
 const ROLL_ANIMATION_FPS = 20.0
 const ROLL_FRAME_DURATION = 1.0 / ROLL_ANIMATION_FPS  # 0.05 seconds per frame
@@ -328,7 +334,17 @@ func load_roll_frames():
 		else:
 			print("Warning: Could not load roll frame: ", texture_path)
 	
-	print("Loaded ", roll_frame_textures.size(), " roll frames")
+	# Load roll entry textures
+	roll_entry_textures.clear()
+	for i in range(1, 3):  # Roll_Entry_1.png and Roll_Entry_2.png
+		var texture_path = "res://Assets/Roll_Entry_" + str(i) + ".png"
+		var texture = load(texture_path)
+		if texture:
+			roll_entry_textures.append(texture)
+		else:
+			print("Warning: Could not load roll entry frame: ", texture_path)
+	
+	print("Loaded ", roll_frame_textures.size(), " roll frames and ", roll_entry_textures.size(), " roll entry frames")
 
 func setup_references():
 	effects_manager = get_tree().get_first_node_in_group("effects_manager")
@@ -814,13 +830,13 @@ func update_sprite_animation():
 	# In air: only use dash sprite during air dash, otherwise use idle
 	elif not is_on_floor():
 		if is_dashing:
-			target_animation = "dash"
+			target_animation = "dashback" if is_dashing_backward else "dash"
 		else:
 			target_animation = "idle"
 	else:
 		# On ground: use speed-based animations
 		if is_dashing:
-			target_animation = "dash"
+			target_animation = "dashback" if is_dashing_backward else "dash"
 		elif speed >= 1600:
 			target_animation = "dash"
 		elif speed >= 600:
@@ -1100,6 +1116,54 @@ func start_air_roll():
 	if effects_manager:
 		effects_manager.add_combo("air_roll")
 
+func _transition_to_ground_roll():
+	# Transition from air roll to ground roll without resetting animation
+	print("Transitioning from air roll to ground roll at speed: ", abs(velocity.x))
+	is_rolling = true
+	
+	# Determine if this is a brake roll or quick roll based on pending brake status
+	var is_brake_roll = should_brake_on_roll_end
+	
+	if is_brake_roll:
+		# Brake roll: shorter distance, no immediate speed change
+		roll_distance_remaining = BRAKE_ROLL_DISTANCE
+		roll_start_speed = abs(velocity.x)
+	else:
+		# Quick roll: longer distance, apply gradual speed regulation
+		roll_distance_remaining = QUICK_ROLL_DISTANCE
+		var current_speed = abs(velocity.x)
+		
+		# Determine speed adjustment based on current velocity
+		if current_speed >= 2000.0:
+			roll_target_speed = current_speed + 250.0
+			print("Quick roll gradual speed boost: ", current_speed, " → ", roll_target_speed)
+		elif current_speed <= 800.0:
+			roll_target_speed = max(0, current_speed - 250.0)
+			print("Quick roll gradual speed reduction: ", current_speed, " → ", roll_target_speed)
+		
+		roll_start_speed = current_speed
+		# No immediate speed change - will be applied gradually during roll
+	
+	roll_direction = sign(velocity.x) if velocity.x != 0 else 1
+	roll_time_elapsed = 0.0
+	roll_distance_traveled = 0.0  # Reset distance traveled
+	is_roll_leaping = false
+	roll_leap_timer = 0.0
+	can_roll = false
+	
+	# DON'T reset animation timer - preserve air roll animation state
+	# roll_animation_timer = 0.0  # <-- This line is intentionally omitted
+	# roll_current_frame = 0      # <-- This line is intentionally omitted
+	# roll_animation_completed = false  # <-- This line is intentionally omitted
+	
+	set_sprite_color_state(ColorState.ROLLING)
+	
+	# Sprite is already set up from air roll, don't change it
+	
+	# Visual effects and combo points
+	if effects_manager:
+		effects_manager.add_combo("roll")
+
 func start_roll():
 	if is_rolling:
 		return
@@ -1172,38 +1236,64 @@ func update_roll_animation(delta):
 	# Update animation timer
 	roll_animation_timer += delta
 	
-	# Calculate current frame
+	# Calculate current frame including entry frames
+	# Total frames = 2 entry frames + 10 roll frames = 12 frames
+	var total_frames = 2 + ROLL_ANIMATION_FRAMES
 	var target_frame = int(roll_animation_timer / ROLL_FRAME_DURATION)
+	
+	var texture_to_use = null
 	
 	if is_roll_leaping:
 		# During roll leap, loop the animation if all frames have been used
 		if roll_animation_completed:
-			# Loop the animation at 20fps during roll leap
-			target_frame = target_frame % ROLL_ANIMATION_FRAMES
+			# Loop only the roll frames (skip entry frames during loop)
+			var loop_frame = (target_frame - 2) % ROLL_ANIMATION_FRAMES
+			if loop_frame >= 0 and loop_frame < roll_frame_textures.size():
+				texture_to_use = roll_frame_textures[loop_frame]
 		else:
-			# Continue the initial animation sequence
-			target_frame = min(target_frame, ROLL_ANIMATION_FRAMES - 1)
-			if target_frame >= ROLL_ANIMATION_FRAMES - 1:
-				roll_animation_completed = true
-				roll_animation_timer = 0.0  # Reset timer for looping
+			# Play through the full sequence once (entry + roll)
+			if target_frame < 2 and roll_entry_textures.size() >= 2:
+				# Show entry frames
+				texture_to_use = roll_entry_textures[target_frame]
+			elif target_frame >= 2:
+				# Show roll frames
+				var roll_frame_index = target_frame - 2
+				if roll_frame_index < roll_frame_textures.size():
+					texture_to_use = roll_frame_textures[roll_frame_index]
+				else:
+					roll_animation_completed = true
+					roll_animation_timer = 0.0  # Reset timer for looping
 	elif is_air_rolling:
-		# During air roll, loop after 0.5 seconds (10 frames at 20fps)
-		if roll_animation_timer >= 0.5:  # 0.5 seconds = 10 frames at 20fps
-			# Loop the animation continuously during air roll
-			target_frame = target_frame % ROLL_ANIMATION_FRAMES
+		# During air roll, start with entry frames then loop roll frames
+		if target_frame < 2 and roll_entry_textures.size() >= 2:
+			# Show entry frames
+			texture_to_use = roll_entry_textures[target_frame]
 		else:
-			# Play through initial sequence once
-			target_frame = min(target_frame, ROLL_ANIMATION_FRAMES - 1)
+			# Loop roll frames continuously 
+			var roll_frame_index = (target_frame - 2) % ROLL_ANIMATION_FRAMES
+			if roll_frame_index >= 0 and roll_frame_index < roll_frame_textures.size():
+				texture_to_use = roll_frame_textures[roll_frame_index]
 	else:
-		# During ground roll, play through all 10 frames once (0.5 seconds total)
-		target_frame = min(target_frame, ROLL_ANIMATION_FRAMES - 1)
-		if target_frame >= ROLL_ANIMATION_FRAMES - 1:
-			roll_animation_completed = true
+		# During ground roll, play entry frames then loop roll frames until roll ends
+		if target_frame < 2 and roll_entry_textures.size() >= 2:
+			# Show entry frames
+			texture_to_use = roll_entry_textures[target_frame]
+		elif target_frame >= 2:
+			# Loop roll frames continuously until roll ends
+			var roll_frame_index = (target_frame - 2) % ROLL_ANIMATION_FRAMES
+			if roll_frame_index >= 0 and roll_frame_index < roll_frame_textures.size():
+				texture_to_use = roll_frame_textures[roll_frame_index]
 	
-	# Update roll sprite texture with the corresponding roll frame
-	if roll_current_frame != target_frame and roll_sprite:
-		roll_current_frame = target_frame
-		roll_sprite.texture = roll_frame_textures[roll_current_frame]
+	# Update roll sprite texture and flipping
+	if texture_to_use and roll_sprite:
+		roll_sprite.texture = texture_to_use
+		
+		# Flip sprite based on roll direction
+		# Positive roll_direction = moving right (normal), negative = moving left (flipped)
+		if roll_direction < 0:
+			roll_sprite.scale.x = -abs(roll_sprite.scale.x)  # Flip horizontally
+		else:
+			roll_sprite.scale.x = abs(roll_sprite.scale.x)   # Normal orientation
 
 func update_air_roll(delta):
 	if not is_air_rolling:
@@ -1225,13 +1315,13 @@ func update_air_roll(delta):
 		if current_speed >= roll_min_speed:
 			# Check if we should start with a brake setup
 			if air_roll_pending_brake and roll_key_held:
-				# Start ground roll but mark it for immediate brake
-				start_roll()
+				# Transition to ground roll but mark it for immediate brake
+				_transition_to_ground_roll()
 				# Transfer the key hold duration and set up for brake
 				should_brake_on_roll_end = true
 			else:
-				# Start normal ground roll
-				start_roll()
+				# Transition to normal ground roll
+				_transition_to_ground_roll()
 		else:
 			# Too slow for ground roll - just end air roll
 			clear_sprite_color_state(ColorState.ROLLING)
@@ -1261,14 +1351,8 @@ func update_roll(delta):
 		# End roll leap when timer expires OR when player lands
 		if roll_leap_timer >= ROLL_LEAP_DURATION or is_on_floor():
 			is_roll_leaping = false
-			is_rolling = false
-			clear_sprite_color_state(ColorState.ROLLING)
-			
-			# Reset roll animation and restore normal sprite
-			roll_animation_timer = 0.0
-			roll_current_frame = 0
-			roll_animation_completed = false
-			restore_normal_sprite()
+			# Call proper roll end with exit animation
+			end_roll()
 		return
 	
 	# Update roll time
@@ -1383,8 +1467,43 @@ func end_air_roll():
 	
 
 func end_roll():
+	# Play quick exit animation (roll_entry_2 then roll_entry_1)
+	if roll_entry_textures.size() >= 2 and roll_sprite:
+		# Show exit frames quickly
+		roll_sprite.texture = roll_entry_textures[1]  # Roll_Entry_2
+		
+		# Apply direction flipping for exit animation
+		if roll_direction < 0:
+			roll_sprite.scale.x = -abs(roll_sprite.scale.x)  # Flip horizontally
+		else:
+			roll_sprite.scale.x = abs(roll_sprite.scale.x)   # Normal orientation
+		
+		# Set timer to show first entry frame then complete
+		var timer1 = get_tree().create_timer(0.05)  # 50ms for second frame
+		timer1.timeout.connect(_show_exit_frame_1)
+		return
+	
+	# If no exit animation, end immediately
+	_end_roll_complete()
+
+func _show_exit_frame_1():
+	if roll_sprite and roll_entry_textures.size() >= 1:
+		roll_sprite.texture = roll_entry_textures[0]  # Roll_Entry_1
+		
+		# Apply direction flipping for exit animation
+		if roll_direction < 0:
+			roll_sprite.scale.x = -abs(roll_sprite.scale.x)  # Flip horizontally
+		else:
+			roll_sprite.scale.x = abs(roll_sprite.scale.x)   # Normal orientation
+	
+	# Complete the roll after showing first frame
+	var timer2 = get_tree().create_timer(0.05)  # 50ms for first frame
+	timer2.timeout.connect(_end_roll_complete)
+
+func _end_roll_complete():
 	is_rolling = false
 	is_roll_leaping = false
+	is_roll_exiting = false
 	roll_distance_remaining = 0.0
 	roll_time_elapsed = 0.0
 	roll_leap_timer = 0.0
@@ -1414,6 +1533,15 @@ func end_roll():
 	roll_key_held_duration = 0.0
 	
 	clear_sprite_color_state(ColorState.ROLLING)
+	
+	# Hide roll sprite and show main sprite
+	if roll_sprite:
+		roll_sprite.visible = false
+	sprite.visible = true
+	
+	# Restore normal sprite animation system
+	sprite.animation = "idle"
+	sprite.play("idle")
 	
 	# Restore normal sprite system
 	restore_normal_sprite()
@@ -1935,6 +2063,12 @@ func _physics_process(delta):
 			# Speed-based scaling: dash speed increases with stored velocity
 			var speed_bonus = min(stored_velocity.length() * 0.1, 200.0)  # Up to 200 bonus speed
 			var scaled_dash_speed = dash_speed + speed_bonus
+			
+			# Check if this is a backward dash (opposite to facing direction)
+			var player_facing_left = sprite.flip_h
+			var dash_going_left = dash_direction.x < 0
+			is_dashing_backward = (player_facing_left and not dash_going_left) or (not player_facing_left and dash_going_left)
+			
 			velocity = dash_direction * scaled_dash_speed
 			is_charging_dash = false
 			is_dashing = true
@@ -2011,6 +2145,7 @@ func _physics_process(delta):
 				velocity.y = max(velocity.y, -upward_velocity_cap)
 			
 			is_dashing = false
+			is_dashing_backward = false  # Reset backward dash flag
 			clear_sprite_color_state(ColorState.DASHING)
 			if effects_manager:
 				effects_manager.screen_shake(2.5, 0.12)  # Impact on dash completion

@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://biwovba3rptx0" path="res://NewLevel.gd" id="1_newlevel"]
 [ext_resource type="PackedScene" uid="uid://b72bwutmwgfog" path="res://Player.tscn" id="1_player"]
-[ext_resource type="TileSet" uid="uid://d1wkxgl3g57mr" path="res://tileset.tres" id="2_tileset"]
+[ext_resource type="TileSet" uid="uid://g1ov1hyr14v8" path="res://tileset_brown.tres" id="2_tileset"]
 [ext_resource type="Texture2D" uid="uid://dhsiyy6knta2i" path="res://Assets/Sky.PNG" id="3_sky"]
 [ext_resource type="PackedScene" path="res://Door.tscn" id="5_door"]
 [ext_resource type="PackedScene" uid="uid://edgcswec8jwo" path="res://DashBulb.tscn" id="6_dashbulb"]
@@ -85,3 +85,5 @@ position = Vector2(6112, -515)
 
 [node name="Antichrist" parent="." instance=ExtResource("10_antichrist")]
 position = Vector2(6422, -434)
+
+[node name="SceneTransition" parent="." instance=ExtResource("11_transition")]

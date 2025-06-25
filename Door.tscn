@@ -6,6 +6,7 @@
 size = Vector2(60, 120)
 
 [node name="Door" type="Area2D"]
+z_index = -1
 script = ExtResource("1_door")
 
 [node name="DoorSprite" type="ColorRect" parent="."]

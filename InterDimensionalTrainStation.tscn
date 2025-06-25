@@ -1,12 +1,13 @@
-[gd_scene load_steps=7 format=3 uid="uid://bnkoc512l3uoq"]
+[gd_scene load_steps=8 format=3 uid="uid://bnkoc512l3uoq"]
 
 [ext_resource type="PackedScene" uid="uid://b72bwutmwgfog" path="res://Player.tscn" id="1_player"]
 [ext_resource type="Script" uid="uid://ptpj5t7weh04" path="res://InterDimensionalTrainStation.gd" id="1_station"]
-[ext_resource type="TileSet" uid="uid://d1wkxgl3g57mr" path="res://tileset.tres" id="2_tileset"]
+[ext_resource type="TileSet" uid="uid://brown_tileset_uid" path="res://tileset_brown.tres" id="2_tileset"]
 [ext_resource type="Texture2D" uid="uid://dhsiyy6knta2i" path="res://Assets/Sky.PNG" id="3_sky"]
 [ext_resource type="PackedScene" path="res://Door.tscn" id="5_door"]
 [ext_resource type="Texture2D" uid="uid://dvfqia5onwd4e" path="res://Assets/Train.PNG" id="6_train"]
 [ext_resource type="AudioStream" uid="uid://deadtheme" path="res://Assets/Dead.mp3" id="7_theme"]
+[ext_resource type="PackedScene" uid="uid://scene_transition" path="res://SceneTransition.tscn" id="8_transition"]
 
 [node name="InterDimensionalTrainStation" type="Node2D"]
 script = ExtResource("1_station")
@@ -79,4 +80,6 @@ position = Vector2(603, 30)
 stream = ExtResource("7_theme")
 autoplay = true
 volume_db = -10.0
+
+[node name="SceneTransition" parent="." instance=ExtResource("8_transition")]
 

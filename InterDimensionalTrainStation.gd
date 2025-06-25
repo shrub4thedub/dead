@@ -31,6 +31,9 @@ func _ready():
 	# Configure the exit door to go back to Main scene
 	call_deferred("setup_exit_door")
 	
+	# Update exit door destination based on current state
+	call_deferred("update_exit_door_destination")
+	
 	# Setup background music
 	call_deferred("setup_background_music")
 
@@ -100,15 +103,19 @@ func setup_exit_door():
 		print("Exit door configured to go to Main scene")
 
 func update_exit_door_destination():
-	# Check if Antichrist has been killed to determine destination
+	# Determine where the exit door should go based on mission progress
 	var exit_door = $ExitDoor
 	
 	if exit_door:
-		if GameState.antichrist_is_dead:
-			# After killing Antichrist, train goes back to main scene 
-			exit_door.next_scene_path = "res://Main.tscn"
-			print("Exit door now goes back to Main scene (Antichrist is dead)")
-		else:
-			# Before killing Antichrist, train goes to Wyoming
+		if has_taken_train and not GameState.antichrist_is_dead:
+			# After taking train but before killing Antichrist, go to Wyoming
 			exit_door.next_scene_path = "res://NewLevel.tscn"
-			print("Exit door now goes to Wyoming")
+			print("Exit door goes to Wyoming (train taken, Antichrist alive)")
+		elif has_taken_train and GameState.antichrist_is_dead:
+			# After taking train and killing Antichrist, go back to Main
+			exit_door.next_scene_path = "res://Main.tscn"
+			print("Exit door goes back to Main (train taken, Antichrist dead)")
+		else:
+			# Before taking train, stay at Main scene
+			exit_door.next_scene_path = "res://Main.tscn"
+			print("Exit door goes to Main (train not taken)")

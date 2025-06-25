@@ -54,7 +54,6 @@ var conversation_sets = [
 
 var current_conversation_index = 0
 var has_spoken_to_manager = false
-var mission_completed = false
 
 var post_mission_dialogue = [
 	[
@@ -109,7 +108,6 @@ var post_antichrist_dialogue = [
 
 var post_mission_index = 0
 var post_antichrist_index = 0
-var antichrist_mission_complete = false
 var door_spawned = false
 
 func _ready():
@@ -136,8 +134,7 @@ func connect_game_state_signals():
 	GameState.train_station_visited_after_antichrist_death.connect(_on_train_station_visited_after_antichrist)
 
 func _on_antichrist_killed():
-	antichrist_mission_complete = true
-	print("Handler: Antichrist mission complete")
+	print("Handler: Antichrist mission complete signal received")
 
 func _on_train_station_visited_after_antichrist():
 	if not door_spawned:
@@ -169,13 +166,14 @@ func talk_to_handler():
 		if prompt_label:
 			prompt_label.visible = false
 		
-		if antichrist_mission_complete:
+		# Check GameState for mission progress instead of local variables
+		if GameState.antichrist_is_dead:
 			# Use post-antichrist dialogue
 			var current_conversation = post_antichrist_dialogue[post_antichrist_index]
 			dialogue_system.start_conversation("Handler", current_conversation)
 			
 			post_antichrist_index = (post_antichrist_index + 1) % post_antichrist_dialogue.size()
-		elif mission_completed:
+		elif GameState.jeffery_mission_completed:
 			# Use post-mission dialogue
 			var current_conversation = post_mission_dialogue[post_mission_index]
 			dialogue_system.start_conversation("Handler", current_conversation)
@@ -222,8 +220,9 @@ func start_speaking(text: String):
 	pass
 
 func _on_mission_completed():
-	# Handler switches to post-mission dialogue
-	mission_completed = true
+	# This function is called by Fish when mission is completed
+	# But we now use GameState.jeffery_mission_completed instead
+	print("Handler: Mission completed callback received")
 
 func check_manager_interaction():
 	# Check if the manager has progressed beyond first conversation

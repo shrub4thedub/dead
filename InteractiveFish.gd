@@ -209,6 +209,8 @@ func _on_dialogue_ended():
 	if handler_mission_briefed:
 		# Emit signal to notify Manager and Handler that mission is complete
 		mission_completed.emit()
+		# Update global game state
+		GameState.complete_jeffery_mission()
 		# Connect to Manager and Handler to update their state
 		var manager = get_tree().get_first_node_in_group("manager")
 		var handler = get_tree().get_first_node_in_group("handler")

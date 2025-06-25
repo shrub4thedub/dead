@@ -52,8 +52,13 @@ func enter_door():
 	# Notify game state about train station visit
 	GameState.visit_train_station()
 	
-	# Change to the train station scene
-	get_tree().change_scene_to_file(next_scene_path)
+	# Use smooth scene transition instead of direct scene change
+	var scene_transition = get_tree().get_first_node_in_group("scene_transition")
+	if scene_transition and scene_transition.has_method("start_scene_transition"):
+		scene_transition.start_scene_transition(next_scene_path)
+	else:
+		# Fallback to direct scene change
+		get_tree().change_scene_to_file(next_scene_path)
 
 func shake_door():
 	var tween = create_tween()

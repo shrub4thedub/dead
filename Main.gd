@@ -6,13 +6,26 @@ var title_screen
 var title_logo
 var title_text
 var is_title_active = true
+var is_returning_from_train = false
 
 func _ready():
 	# Add to main scene group
 	add_to_group("main_scene")
 	setup_game_state()
 	setup_effects_system()
-	setup_title_screen()
+	
+	# Check if we're returning from train station after Antichrist death
+	is_returning_from_train = GameState.antichrist_is_dead and GameState.has_visited_train_station_after_antichrist
+	print("Main: is_returning_from_train=", is_returning_from_train, " antichrist_dead=", GameState.antichrist_is_dead, " visited_train=", GameState.has_visited_train_station_after_antichrist)
+	
+	# Only show title screen on first load (not when returning from train)
+	if not is_returning_from_train:
+		setup_title_screen()
+	else:
+		is_title_active = false
+		# Position player near Handler when returning from train
+		call_deferred("position_player_near_handler")
+	
 	connect_coin_signals()
 	# Setup train station door
 	call_deferred("setup_train_station_door")
@@ -160,6 +173,16 @@ func setup_train_station_door():
 func setup_game_state():
 	# GameState is now an autoload singleton, so no need to create it here
 	pass
+
+func position_player_near_handler():
+	# Find the Handler and position player nearby
+	var handler = get_tree().get_first_node_in_group("handler")
+	var player = get_node_or_null("Player")
+	
+	if handler and player:
+		# Position player to the left of the Handler
+		player.global_position = handler.global_position + Vector2(-150, 0)
+		print("Player positioned near Handler after train return")
 
 func unlock_train_station():
 	var door = get_node_or_null("Door")

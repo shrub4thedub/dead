@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://b72bwutmwgfog"]
+[gd_scene load_steps=16 format=3 uid="uid://b72bwutmwgfog"]
 
 [ext_resource type="Script" uid="uid://bfkx3qskfrmqf" path="res://Player.gd" id="1_8v5xj"]
 [ext_resource type="Texture2D" uid="uid://bywo1mqjc4swf" path="res://Assets/Frame 1.PNG" id="2_frame1"]
@@ -7,7 +7,8 @@
 [ext_resource type="Texture2D" uid="uid://dm3vvyn385578" path="res://Assets/Frame Run.PNG" id="5_frame_run"]
 [ext_resource type="Texture2D" uid="uid://dvwi4xk1ck8cl" path="res://Assets/Frame Dash.PNG" id="6_frame_dash"]
 [ext_resource type="Texture2D" uid="uid://db3e2535e6o2l" path="res://Assets/Frame Roll.PNG" id="7_frame_roll"]
-[ext_resource type="PackedScene" uid="uid://b8yq2mv8e5cvi" path="res://Scythe.tscn" id="8_scythe"]
+[ext_resource type="Texture2D" uid="uid://v8dusljqpwyu" path="res://Assets/DashBack.png" id="8_dashback"]
+[ext_resource type="PackedScene" uid="uid://b8yq2mv8e5cvi" path="res://Scythe.tscn" id="9_scythe"]
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_player"]
 animations = [{
@@ -17,6 +18,14 @@ animations = [{
 }],
 "loop": true,
 "name": &"dash",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("8_dashback")
+}],
+"loop": true,
+"name": &"dashback",
 "speed": 1.0
 }, {
 "frames": [{
@@ -109,4 +118,4 @@ shape = SubResource("CapsuleShape2D_1")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 
-[node name="Scythe" parent="." instance=ExtResource("8_scythe")]
+[node name="Scythe" parent="." instance=ExtResource("9_scythe")]
