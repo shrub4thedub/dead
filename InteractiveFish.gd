@@ -191,6 +191,11 @@ func talk_to_fish():
 			# Normal post-briefing dialogue (fish already met player before)
 			var current_conversation = post_briefing_conversation_sets[post_briefing_index]
 			dialogue_system.start_conversation("Fish", current_conversation)
+			
+			# Show status text when Jeffery gives cigarettes (conversation 6: "Here. Take em. Now back away slowly.")
+			if post_briefing_index == 6:
+				show_cigarette_status("Received: Pack of Cigarettes from Jeffery", Color.WHITE)
+			
 			post_briefing_index = (post_briefing_index + 1) % post_briefing_conversation_sets.size()
 		else:
 			# Normal dialogue (before handler briefing)
@@ -260,3 +265,18 @@ func jump_off_stage():
 	
 	# Finally, remove the fish from the scene
 	tween.chain().tween_callback(func(): queue_free())
+
+func show_cigarette_status(text: String, color: Color = Color.WHITE):
+	# Find the GameUI and show status text
+	var game_ui = get_tree().get_first_node_in_group("game_ui")
+	if not game_ui:
+		# Try to find it through the main scene
+		var main_scene = get_tree().get_first_node_in_group("main_scene")
+		if main_scene:
+			for child in main_scene.get_children():
+				if child.has_method("show_status_text"):
+					game_ui = child
+					break
+	
+	if game_ui and game_ui.has_method("show_status_text"):
+		game_ui.show_status_text(text, color)

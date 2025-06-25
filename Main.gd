@@ -10,6 +10,7 @@ var is_title_active = true
 func _ready():
 	# Add to main scene group
 	add_to_group("main_scene")
+	setup_game_state()
 	setup_effects_system()
 	setup_title_screen()
 	connect_coin_signals()
@@ -155,6 +156,10 @@ func setup_train_station_door():
 	if door:
 		door.is_locked = true
 		print("Train station door is locked until Handler dialogue complete")
+
+func setup_game_state():
+	# GameState is now an autoload singleton, so no need to create it here
+	pass
 
 func unlock_train_station():
 	var door = get_node_or_null("Door")

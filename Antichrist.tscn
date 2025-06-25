@@ -1,0 +1,17 @@
+[gd_scene load_steps=4 format=3 uid="uid://antichrist_scene"]
+
+[ext_resource type="Script" path="res://Antichrist.gd" id="1_antichrist"]
+[ext_resource type="Texture2D" uid="uid://dww3js05672qc" path="res://Assets/Antichrist_alive.png" id="2_antichrist"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_antichrist"]
+size = Vector2(60, 80)
+
+[node name="Antichrist" type="Area2D"]
+script = ExtResource("1_antichrist")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+scale = Vector2(0.15, 0.15)
+texture = ExtResource("2_antichrist")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_antichrist")

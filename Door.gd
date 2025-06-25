@@ -48,6 +48,10 @@ func enter_door():
 		# Shake the door
 		shake_door()
 		return
+	
+	# Notify game state about train station visit
+	GameState.visit_train_station()
+	
 	# Change to the train station scene
 	get_tree().change_scene_to_file(next_scene_path)
 

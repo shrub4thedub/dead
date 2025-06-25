@@ -9,6 +9,8 @@ class_name GameUI
 @onready var last_move_label: Label
 @onready var trajectory_line: Line2D
 @onready var screen_overlay: ColorRect
+@onready var status_container: VBoxContainer
+@onready var status_messages: Array
 
 # Ground time indicator removed
 
@@ -20,6 +22,10 @@ var combo_level_base_position: Vector2
 
 # Screen effects
 var screen_flash_tween: Tween
+
+# Status text
+var status_text_tweens: Array
+const MAX_STATUS_MESSAGES = 5
 
 func _ready():
 	setup_ui_elements()
@@ -103,6 +109,27 @@ func setup_ui_elements():
 	screen_overlay.modulate.a = 0.0
 	screen_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	screen_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	
+	# Status text container - top right corner
+	status_container = VBoxContainer.new()
+	add_child(status_container)
+	status_container.alignment = BoxContainer.ALIGNMENT_END  # Align to bottom of container
+	status_messages = []
+	status_text_tweens = []
+	
+	# Use anchors for proper fullscreen handling
+	status_container.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	status_container.anchor_left = 1.0
+	status_container.anchor_right = 1.0
+	status_container.anchor_top = 0.0
+	status_container.anchor_bottom = 0.0
+	status_container.offset_left = -300  # 300px from right edge
+	status_container.offset_top = 5      # 5px from top (even higher)
+	status_container.offset_right = -20  # 20px margin from right edge
+	status_container.offset_bottom = 160 # 150px height
+	
+	# Connect to viewport size changes for fullscreen handling
+	get_viewport().size_changed.connect(position_status_container)
 
 # Reverse dash UI removed
 
@@ -290,3 +317,55 @@ func stop_morbid_shake():
 		combo_shake_tween = null
 	# Reset position to base
 	combo_level_label.position = combo_level_base_position
+
+
+func position_status_container():
+	# Refresh anchors for fullscreen changes - anchors should handle positioning automatically
+	# This function is called when viewport size changes
+	pass
+
+func show_status_text(text: String, color: Color = Color.WHITE):
+	# Load Georgia font
+	var georgia_font = load("res://Assets/georgia-2/georgia.ttf") as FontFile
+	
+	# Create new status message label
+	var status_label = Label.new()
+	status_label.text = text
+	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	status_label.add_theme_font_override("font", georgia_font)
+	status_label.add_theme_font_size_override("font_size", 18)
+	status_label.add_theme_color_override("font_color", color)
+	status_label.modulate.a = 0.0
+	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	
+	# Add to container and arrays
+	status_container.add_child(status_label)
+	status_messages.append(status_label)
+	
+	# Remove oldest message if we exceed max
+	if status_messages.size() > MAX_STATUS_MESSAGES:
+		var oldest_label = status_messages[0]
+		status_messages.remove_at(0)
+		# Clean up corresponding tween if it exists
+		if status_text_tweens.size() > 0:
+			var oldest_tween = status_text_tweens[0]
+			if oldest_tween:
+				oldest_tween.kill()
+			status_text_tweens.remove_at(0)
+		oldest_label.queue_free()
+	
+	# Create fade in/out sequence for new message
+	var message_tween = create_tween()
+	status_text_tweens.append(message_tween)
+	message_tween.tween_property(status_label, "modulate:a", 1.0, 0.5)  # Fade in over 0.5s
+	message_tween.tween_property(status_label, "modulate:a", 1.0, 19.0)  # Stay visible for 19s
+	message_tween.tween_property(status_label, "modulate:a", 0.0, 0.5)  # Fade out over 0.5s
+	
+	# Clean up when tween finishes
+	message_tween.finished.connect(_on_status_message_finished.bind(status_label, message_tween))
+
+func _on_status_message_finished(status_label: Label, message_tween: Tween):
+	if status_label and is_instance_valid(status_label):
+		status_messages.erase(status_label)
+		status_label.queue_free()
+	status_text_tweens.erase(message_tween)

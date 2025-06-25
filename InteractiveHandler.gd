@@ -86,7 +86,31 @@ var post_mission_dialogue = [
 	]
 ]
 
+var post_antichrist_dialogue = [
+	[
+		"Oh, you're back. How did it go?",
+	],
+	[
+		"The Antichrist is dead? Well I'll be damned. Good work.",
+	],
+	[
+		"That was probably the most important job we've had in centuries.",
+	],
+	[
+		"Alright, here's your next assignment. There's a new realm that's opened up.",
+	],
+	[
+		"Go to the train station, take the train, and investigate this new realm.",
+	],
+	[
+		"The door should appear near me when you return from the train station.",
+	]
+]
+
 var post_mission_index = 0
+var post_antichrist_index = 0
+var antichrist_mission_complete = false
+var door_spawned = false
 
 func _ready():
 	add_to_group("handler")
@@ -97,6 +121,8 @@ func _ready():
 	prompt_label.add_theme_font_override("font", georgia_font)
 	# Find dialogue system after scene is ready
 	call_deferred("find_dialogue_system")
+	# Connect to game state signals
+	call_deferred("connect_game_state_signals")
 
 func _process(delta):
 	# Handler sits completely still - no floating or shaking
@@ -104,6 +130,19 @@ func _process(delta):
 
 func find_dialogue_system():
 	dialogue_system = get_tree().get_first_node_in_group("dialogue_system")
+
+func connect_game_state_signals():
+	GameState.antichrist_killed.connect(_on_antichrist_killed)
+	GameState.train_station_visited_after_antichrist_death.connect(_on_train_station_visited_after_antichrist)
+
+func _on_antichrist_killed():
+	antichrist_mission_complete = true
+	print("Handler: Antichrist mission complete")
+
+func _on_train_station_visited_after_antichrist():
+	if not door_spawned:
+		spawn_door_near_handler()
+		door_spawned = true
 
 func _on_body_entered(body):
 	if body.name == "Player":
@@ -130,10 +169,21 @@ func talk_to_handler():
 		if prompt_label:
 			prompt_label.visible = false
 		
-		if mission_completed:
+		if antichrist_mission_complete:
+			# Use post-antichrist dialogue
+			var current_conversation = post_antichrist_dialogue[post_antichrist_index]
+			dialogue_system.start_conversation("Handler", current_conversation)
+			
+			post_antichrist_index = (post_antichrist_index + 1) % post_antichrist_dialogue.size()
+		elif mission_completed:
 			# Use post-mission dialogue
 			var current_conversation = post_mission_dialogue[post_mission_index]
 			dialogue_system.start_conversation("Handler", current_conversation)
+			
+			# Show mission status text for second mission (conversation 6: Wyoming antichrist mission)
+			if post_mission_index == 6:
+				show_mission_status("Mission: Kill the Antichrist in Wyoming", Color.WHITE)
+			
 			post_mission_index = (post_mission_index + 1) % post_mission_dialogue.size()
 			
 			# Check if we just finished the final dialogue that unlocks train station
@@ -154,6 +204,11 @@ func talk_to_handler():
 				# Get current conversation set
 				var current_conversation = conversation_sets[current_conversation_index]
 				dialogue_system.start_conversation("Handler", current_conversation)
+				
+				# Show mission status text when giving the initial mission (conversation 2: "Got it. You have to kill Jeffery.")
+				if current_conversation_index == 2:
+					show_mission_status("Mission: Kill Jeffery the Fish", Color.WHITE)
+				
 				# Move to next conversation for next time
 				current_conversation_index = (current_conversation_index + 1) % conversation_sets.size()
 
@@ -177,3 +232,31 @@ func check_manager_interaction():
 		has_spoken_to_manager = manager.get_conversation_index() > 0
 	elif manager and "current_conversation_index" in manager:
 		has_spoken_to_manager = manager.current_conversation_index > 0
+
+func show_mission_status(text: String, color: Color = Color.WHITE):
+	# Find the GameUI and show status text
+	var game_ui = get_tree().get_first_node_in_group("game_ui")
+	if not game_ui:
+		# Try to find it through the main scene
+		var main_scene = get_tree().get_first_node_in_group("main_scene")
+		if main_scene:
+			for child in main_scene.get_children():
+				if child is GameUI:
+					game_ui = child
+					break
+	
+	if game_ui and game_ui.has_method("show_status_text"):
+		game_ui.show_status_text(text, color)
+
+func spawn_door_near_handler():
+	# Create a new door instance near the handler
+	var door_scene = preload("res://Door.tscn")
+	var door_instance = door_scene.instantiate()
+	
+	# Position the door near the handler (100 pixels to the right)
+	door_instance.position = position + Vector2(100, 0)
+	
+	# Add the door to the same parent as the handler
+	get_parent().add_child(door_instance)
+	
+	print("Handler: Door spawned near handler")

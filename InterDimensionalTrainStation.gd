@@ -100,8 +100,15 @@ func setup_exit_door():
 		print("Exit door configured to go to Main scene")
 
 func update_exit_door_destination():
-	# After taking the train, exit door goes to new level
+	# Check if Antichrist has been killed to determine destination
 	var exit_door = $ExitDoor
+	
 	if exit_door:
-		exit_door.next_scene_path = "res://NewLevel.tscn"
-		print("Exit door now goes to Wyoming")
+		if GameState.antichrist_is_dead:
+			# After killing Antichrist, train goes back to main scene 
+			exit_door.next_scene_path = "res://Main.tscn"
+			print("Exit door now goes back to Main scene (Antichrist is dead)")
+		else:
+			# Before killing Antichrist, train goes to Wyoming
+			exit_door.next_scene_path = "res://NewLevel.tscn"
+			print("Exit door now goes to Wyoming")

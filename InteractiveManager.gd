@@ -90,6 +90,11 @@ func talk_to_manager():
 		# Get current conversation set
 		var current_conversation = conversation_sets[current_conversation_index]
 		dialogue_system.start_conversation("Manager", current_conversation)
+		
+		# Show employment status text after the employment conversation (conversation 7: "Run along now.")
+		if current_conversation_index == 7:
+			show_employment_status("You are now employed")
+		
 		# Move to next conversation for next time
 		current_conversation_index = (current_conversation_index + 1) % conversation_sets.size()
 
@@ -108,3 +113,21 @@ func _on_mission_completed():
 	var tween = create_tween()
 	tween.tween_property(self, "modulate", Color(1, 1, 1, 0), 1.0)
 	tween.tween_callback(func(): queue_free())
+
+func show_employment_status(text: String, color: Color = Color.WHITE):
+	# Find the GameUI and show status text
+	var game_ui = get_tree().get_first_node_in_group("game_ui")
+	if not game_ui:
+		# Try to find it through the main scene
+		var main_scene = get_tree().get_first_node_in_group("main_scene")
+		if main_scene:
+			for child in main_scene.get_children():
+				if child.has_method("show_status_text"):
+					game_ui = child
+					break
+	
+	if game_ui and game_ui.has_method("show_status_text"):
+		game_ui.show_status_text(text, color)
+
+func get_conversation_index():
+	return current_conversation_index
