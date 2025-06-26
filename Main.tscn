@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3 uid="uid://bmi8i8c54oh27"]
+[gd_scene load_steps=20 format=3 uid="uid://bmi8i8c54oh27"]
 
 [ext_resource type="Script" uid="uid://j60vkqlbbdmx" path="res://Main.gd" id="1_8v5xj"]
 [ext_resource type="PackedScene" uid="uid://b72bwutmwgfog" path="res://Player.tscn" id="2_8v5xj"]
@@ -6,132 +6,26 @@
 [ext_resource type="PackedScene" uid="uid://c72bwutmwgfog" path="res://Coin.tscn" id="4_8v5xj"]
 [ext_resource type="PackedScene" uid="uid://edgcswec8jwo" path="res://DashBulb.tscn" id="5_8v5xj"]
 [ext_resource type="PackedScene" uid="uid://b3hcswedakxp" path="res://SmashBulb.tscn" id="6_8v5xj"]
-[ext_resource type="Texture2D" uid="uid://cd7bc3cixkn7c" path="res://Assets/NewSky.png" id="9_skybox"]
-[ext_resource type="PackedScene" path="res://InteractiveFish.tscn" id="10_fish"]
-[ext_resource type="PackedScene" uid="uid://tlfyfp838v0h" path="res://SimpleDialogue.tscn" id="11_dialogue"]
-[ext_resource type="PackedScene" path="res://InteractiveManager.tscn" id="12_manager"]
-[ext_resource type="PackedScene" uid="uid://chandler001" path="res://InteractiveHandler.tscn" id="13_handler"]
-[ext_resource type="PackedScene" path="res://Door.tscn" id="14_door"]
-[ext_resource type="PackedScene" uid="uid://b4n7q8xar5vix" path="res://DebugUI.tscn" id="15_debug"]
-[ext_resource type="PackedScene" path="res://Zipline.tscn" id="16_zipline"]
-[ext_resource type="AudioStream" uid="uid://dqaqe4647lv77" path="res://Assets/Dead.mp3" id="17_theme"]
-[ext_resource type="PackedScene" uid="uid://du1emeo84kaxv" path="res://Isle.tscn" id="18_isle"]
-[ext_resource type="PackedScene" path="res://IsleSmall.tscn" id="19_islesmall"]
-[ext_resource type="PackedScene" path="res://SceneTransition.tscn" id="20_transition"]
+[ext_resource type="Script" uid="uid://d46q3asgolav" path="res://SkyTileManager.gd" id="10_sky_manager"]
+[ext_resource type="PackedScene" path="res://InteractiveFish.tscn" id="11_fish"]
+[ext_resource type="PackedScene" uid="uid://tlfyfp838v0h" path="res://SimpleDialogue.tscn" id="12_dialogue"]
+[ext_resource type="PackedScene" path="res://InteractiveManager.tscn" id="13_manager"]
+[ext_resource type="PackedScene" uid="uid://chandler001" path="res://InteractiveHandler.tscn" id="14_handler"]
+[ext_resource type="PackedScene" path="res://Door.tscn" id="15_door"]
+[ext_resource type="PackedScene" uid="uid://b4n7q8xar5vix" path="res://DebugUI.tscn" id="16_debug"]
+[ext_resource type="PackedScene" path="res://Zipline.tscn" id="17_zipline"]
+[ext_resource type="AudioStream" uid="uid://dqaqe4647lv77" path="res://Assets/Dead.mp3" id="18_theme"]
+[ext_resource type="PackedScene" uid="uid://du1emeo84kaxv" path="res://Isle.tscn" id="19_isle"]
+[ext_resource type="PackedScene" path="res://IsleSmall.tscn" id="20_islesmall"]
+[ext_resource type="PackedScene" path="res://SceneTransition.tscn" id="21_transition"]
+[ext_resource type="PackedScene" uid="uid://department001" path="res://DepartmentBuilding.tscn" id="22_department"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_8v5xj")
 
-[node name="SkyboxGrid3" type="Node2D" parent="."]
+[node name="SkyTileManager" type="Node2D" parent="."]
 z_index = -100
-position = Vector2(0, 4066)
-
-[node name="Sky_-2_-3" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(-3261, -4389)
-scale = Vector2(2.4003, 2.47308)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_-2_-10" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(-6481, -4350)
-scale = Vector2(2.4003, 2.47308)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_-2_-11" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(-6475, -2059)
-scale = Vector2(2.4003, 2.47308)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_-2_-9" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(-3266, -2105)
-scale = Vector2(2.4003, 2.47308)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_-2_-9" type="Sprite2D" parent="SkyboxGrid3/Sky_-2_-9"]
-position = Vector2(1349.41, -31.944)
-scale = Vector2(0.997997, 0.950227)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_-2_-4" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(-13, -4389)
-scale = Vector2(2.4003, 2.47308)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_-2_-5" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(3229, -4387)
-scale = Vector2(2.4003, 2.47308)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_-2_-6" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(3231, -6630)
-scale = Vector2(2.4003, 2.47308)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_-2_-7" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(-18, -6621)
-scale = Vector2(2.4003, 2.47308)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_-2_-8" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(-3258, -6669)
-scale = Vector2(2.4003, 2.47308)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_-1_-3" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(16328, -432)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_0_-3" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(15244, -881)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_1_-3" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(13319, -2257)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_-2_-2" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(14656, -1340)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_-1_-2" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(-288.5, -2293)
-scale = Vector2(-0.000738552, 1)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_1_-2" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(13505, -2698)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_-2_-1" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(11927, -1254)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_-1_-1" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(14764, -1637)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_0_-1" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(12186, -2404)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_1_-1" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(12469, -3042)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_-2_0" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(12872, -1226)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_-1_0" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(12746, -1967)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_0_0" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(11267, -2172)
-texture = ExtResource("9_skybox")
-
-[node name="Sky_1_0" type="Sprite2D" parent="SkyboxGrid3"]
-position = Vector2(9557, -2785)
-texture = ExtResource("9_skybox")
+script = ExtResource("10_sky_manager")
 
 [node name="TileMap" type="TileMap" parent="."]
 z_index = -2
@@ -170,21 +64,24 @@ position = Vector2(895, -81)
 [node name="SmashBulb" parent="." instance=ExtResource("6_8v5xj")]
 position = Vector2(1734, -1596)
 
-[node name="Fish" parent="." instance=ExtResource("10_fish")]
+[node name="Fish" parent="." instance=ExtResource("11_fish")]
 position = Vector2(-263, 209)
 
-[node name="Handler" parent="." instance=ExtResource("13_handler")]
+[node name="Handler" parent="." instance=ExtResource("14_handler")]
 position = Vector2(1684, -2371)
 
-[node name="Manager" parent="." instance=ExtResource("12_manager")]
+[node name="Manager" parent="." instance=ExtResource("13_manager")]
 position = Vector2(1273, -2384)
 
-[node name="Door" parent="." instance=ExtResource("14_door")]
+[node name="DepartmentBuilding" parent="." instance=ExtResource("22_department")]
+position = Vector2(1479, -2378)
+
+[node name="Door" parent="." instance=ExtResource("15_door")]
 position = Vector2(-4573, 349)
 
-[node name="SimpleDialogue" parent="." instance=ExtResource("11_dialogue")]
+[node name="SimpleDialogue" parent="." instance=ExtResource("12_dialogue")]
 
-[node name="DebugUI" parent="." instance=ExtResource("15_debug")]
+[node name="DebugUI" parent="." instance=ExtResource("16_debug")]
 
 [node name="UnlockLabel" type="Label" parent="."]
 visible = false
@@ -196,49 +93,49 @@ text = "Train Station Unlocked!"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="TestZipline" parent="." instance=ExtResource("16_zipline")]
+[node name="TestZipline" parent="." instance=ExtResource("17_zipline")]
 position = Vector2(-6546, 237)
 rotation = 0.0738595
 end_position = Vector2(400, 150)
 
 [node name="BGM" type="AudioStreamPlayer" parent="."]
-stream = ExtResource("17_theme")
+stream = ExtResource("18_theme")
 volume_db = -10.0
 autoplay = true
 
-[node name="Isle" parent="." instance=ExtResource("18_isle")]
+[node name="Isle" parent="." instance=ExtResource("19_isle")]
 z_index = -1
 position = Vector2(-4478, 595)
 scale = Vector2(0.85, 0.85)
 
-[node name="Isle2" parent="." instance=ExtResource("18_isle")]
+[node name="Isle2" parent="." instance=ExtResource("19_isle")]
 z_index = -1
 position = Vector2(-2516, 750)
 scale = Vector2(2.6, 2.49)
 
-[node name="Isle3" parent="." instance=ExtResource("18_isle")]
+[node name="Isle3" parent="." instance=ExtResource("19_isle")]
 z_index = -1
 position = Vector2(-373, 572)
 scale = Vector2(1.55, 1.5)
 
-[node name="Isle4" parent="." instance=ExtResource("18_isle")]
+[node name="Isle4" parent="." instance=ExtResource("19_isle")]
 z_index = -1
 position = Vector2(1747, -1178)
 scale = Vector2(1.05, 0.8)
 
-[node name="IsleSmall" parent="." instance=ExtResource("19_islesmall")]
+[node name="IsleSmall" parent="." instance=ExtResource("20_islesmall")]
 z_index = -1
 position = Vector2(-4104, 453)
 scale = Vector2(0.25, 0.3)
 
-[node name="IsleSmall2" parent="." instance=ExtResource("19_islesmall")]
+[node name="IsleSmall2" parent="." instance=ExtResource("20_islesmall")]
 z_index = -1
 position = Vector2(-3918, 421)
 scale = Vector2(0.25, 0.3)
 
-[node name="IsleSmall3" parent="." instance=ExtResource("19_islesmall")]
+[node name="IsleSmall3" parent="." instance=ExtResource("20_islesmall")]
 z_index = -1
 position = Vector2(-3726, 390)
 scale = Vector2(0.25, 0.3)
 
-[node name="SceneTransition" parent="." instance=ExtResource("20_transition")]
+[node name="SceneTransition" parent="." instance=ExtResource("21_transition")]
