@@ -46,9 +46,10 @@ func _ready():
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
 	base_position = sprite.position
-	# Set Georgia font for prompt label
-	var georgia_font = load("res://Assets/georgia-2/georgia.ttf") as FontFile
-	prompt_label.add_theme_font_override("font", georgia_font)
+	# Set LiberationSans Bold Italic font for prompt label
+	var liberation_font = load("res://Assets/LiberationSans-BoldItalic.ttf") as FontFile
+	prompt_label.add_theme_font_override("font", liberation_font)
+	prompt_label.scale = Vector2(1.0, 1.2)  # 1.2x vertical stretch
 	# Find dialogue system after scene is ready
 	call_deferred("find_dialogue_system")
 

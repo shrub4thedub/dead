@@ -46,3 +46,4 @@ func show_dialogue_from_queue(character_name: String):
 		hide_dialogue()
 		dialogue_queue.clear()
 		current_dialogue_index = 0
+	

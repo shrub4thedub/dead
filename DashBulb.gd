@@ -31,7 +31,7 @@ func _process(delta):
 func _on_body_entered(body):
 	if body.name == "Player" and not is_respawning:
 		# Check if player is slashing
-		if body.slash_cooldown > 0 or body.slash_effect_timer > 0:
+		if body.slash_cooldown > 0:
 			_activate_bulb(body)
 
 func _on_slash_hit(player_body):

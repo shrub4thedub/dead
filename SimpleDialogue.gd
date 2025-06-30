@@ -22,9 +22,10 @@ var camera_positioned = false  # Flag to prevent double positioning
 func _ready():
 	add_to_group("dialogue_system")
 	hide_dialogue()
-	# Set Georgia font for dialogue text
-	var georgia_font = load("res://Assets/georgia-2/georgia.ttf") as FontFile
-	dialogue_text.add_theme_font_override("font", georgia_font)
+	# Set LiberationSans Bold Italic font for dialogue text
+	var liberation_font = load("res://Assets/LiberationSans-BoldItalic.ttf") as FontFile
+	dialogue_text.add_theme_font_override("font", liberation_font)
+	dialogue_text.scale = Vector2(1.0, 1.2)  # 1.2x vertical stretch
 	# Find player camera
 	call_deferred("find_player_camera")
 

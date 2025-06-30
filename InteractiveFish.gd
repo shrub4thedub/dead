@@ -114,15 +114,17 @@ var first_time_post_briefing_dialogue = [
 
 var first_time_index = 0
 var is_jumping_away = false
+var mission_completed_already = false
 
 func _ready():
 	add_to_group("fish")
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
 	base_position = sprite.position
-	# Set Georgia font for prompt label
-	var georgia_font = load("res://Assets/georgia-2/georgia.ttf") as FontFile
-	prompt_label.add_theme_font_override("font", georgia_font)
+	# Set LiberationSans Bold Italic font for prompt label
+	var liberation_font = load("res://Assets/LiberationSans-BoldItalic.ttf") as FontFile
+	prompt_label.add_theme_font_override("font", liberation_font)
+	prompt_label.scale = Vector2(1.0, 1.2)  # 1.2x vertical stretch
 	# Find dialogue system after scene is ready
 	call_deferred("find_dialogue_system")
 
@@ -206,18 +208,40 @@ func talk_to_fish():
 
 func _on_dialogue_ended():
 	# Check if this was a post-briefing conversation (mission completion)
-	if handler_mission_briefed:
-		# Emit signal to notify Manager and Handler that mission is complete
-		mission_completed.emit()
-		# Update global game state
-		GameState.complete_jeffery_mission()
-		# Connect to Manager and Handler to update their state
-		var manager = get_tree().get_first_node_in_group("manager")
-		var handler = get_tree().get_first_node_in_group("handler")
-		if manager and manager.has_method("_on_mission_completed"):
-			manager._on_mission_completed()
-		if handler and handler.has_method("_on_mission_completed"):
-			handler._on_mission_completed()
+	if handler_mission_briefed and not mission_completed_already:
+		# Check if this is the completion of the mission (final dialogue)
+		var mission_just_completed = false
+		
+		# For first-time post-briefing dialogue, mission completes when fish jumps away
+		if first_time_index >= first_time_post_briefing_dialogue.size():
+			mission_just_completed = true
+		
+		# For normal post-briefing dialogue, mission completes after cigarettes are given (index 6)
+		elif ever_spoken_to_fish and post_briefing_index == 0 and post_briefing_conversation_sets.size() > 0:
+			# We've wrapped around, meaning we completed all dialogue
+			mission_just_completed = true
+		
+		if mission_just_completed:
+			mission_completed_already = true  # Prevent multiple completions
+			print("Fish: Mission completed! Jeffery mission finished.")
+			# Show TARGET NOT ELIMINATED message
+			show_target_not_eliminated()
+			# Emit signal to notify Manager and Handler that mission is complete
+			mission_completed.emit()
+			# Update global game state
+			GameState.complete_jeffery_mission()
+			print("Fish: GameState.complete_jeffery_mission() called, jeffery_mission_completed=", GameState.jeffery_mission_completed)
+			# Connect to Manager and Handler to update their state
+			var manager = get_tree().get_first_node_in_group("manager")
+			var handler = get_tree().get_first_node_in_group("handler")
+			if manager and manager.has_method("_on_mission_completed"):
+				print("Fish: Calling manager._on_mission_completed()")
+				manager._on_mission_completed()
+			if handler and handler.has_method("_on_mission_completed"):
+				print("Fish: Calling handler._on_mission_completed()")
+				handler._on_mission_completed()
+			else:
+				print("Fish: Handler not found or doesn't have _on_mission_completed method")
 	
 	# Check if fish should jump away
 	if is_jumping_away:
@@ -282,3 +306,84 @@ func show_cigarette_status(text: String, color: Color = Color.WHITE):
 	
 	if game_ui and game_ui.has_method("show_status_text"):
 		game_ui.show_status_text(text, color)
+
+func show_target_not_eliminated():
+	print("Fish: show_target_not_eliminated() called")
+	
+	# Create the overlay using a static function to avoid any node dependencies
+	_create_target_not_eliminated_overlay()
+
+# Static function that creates the overlay independently
+static func _create_target_not_eliminated_overlay():
+	# Get the scene tree from the main tree singleton
+	var scene_tree = Engine.get_main_loop() as SceneTree
+	if not scene_tree:
+		print("Fish: Could not get scene tree")
+		return
+	
+	# Create a CanvasLayer for the overlay to ensure it appears on top
+	var canvas_layer = CanvasLayer.new()
+	canvas_layer.layer = 100  # High layer to appear on top
+	scene_tree.root.add_child(canvas_layer)
+	
+	# Create a control that fills the screen
+	var control = Control.new()
+	control.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	canvas_layer.add_child(control)
+	
+	# Create the TARGET NOT ELIMINATED label
+	var label = Label.new()
+	label.text = "TARGET NOT ELIMINATED"
+	label.modulate = Color(1.0, 0.0, 0.0, 0.0)  # Start with transparent red
+	label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	
+	# Use Georgia font with large size and 1.7x vertical stretch
+	var georgia_font = load("res://Assets/georgia-2/georgia.ttf") as FontFile
+	if georgia_font:
+		label.add_theme_font_override("font", georgia_font)
+		label.add_theme_font_size_override("font_size", 120)  # Large font
+		print("Fish: Font applied successfully")
+	else:
+		print("Fish: Failed to load Georgia font")
+	
+	# Apply vertical stretch with center pivot
+	var viewport_size = scene_tree.root.get_viewport().get_visible_rect().size
+	label.pivot_offset = viewport_size / 2  # Set pivot to center of screen
+	label.scale = Vector2(1.0, 1.7)  # 1.7x vertical stretch
+	
+	control.add_child(label)
+	print("Fish: Label added to control")
+	
+	# Create an independent tween using the scene tree
+	var tween = scene_tree.create_tween()
+	tween.tween_property(label, "modulate:a", 1.0, 0.8)  # Fade in
+	tween.tween_interval(3.5)  # Stay visible for 3.5 seconds
+	tween.tween_property(label, "modulate:a", 0.0, 1.2)  # Fade out slower
+	
+	# Use tween callback to clean up
+	tween.tween_callback(func():
+		print("Fish: Tween completed, cleaning up canvas layer")
+		if is_instance_valid(canvas_layer):
+			canvas_layer.queue_free()
+	)
+	
+	# Multiple safety cleanup mechanisms - adjust timer for longer duration
+	scene_tree.create_timer(6.0).timeout.connect(func(): 
+		print("Fish: Safety timer triggered")
+		if is_instance_valid(canvas_layer):
+			print("Fish: Canvas layer still exists, force cleanup")
+			canvas_layer.queue_free()
+		else:
+			print("Fish: Canvas layer already cleaned up")
+	)
+	
+	# Additional cleanup on scene change
+	scene_tree.tree_changed.connect(func():
+		if is_instance_valid(canvas_layer):
+			print("Fish: Scene changed, force cleanup")
+			canvas_layer.queue_free()
+	, CONNECT_ONE_SHOT)
+	
+	print("Fish: Tween animation started")

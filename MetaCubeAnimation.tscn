@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://bplgqhkmxc5mq"]
+
+[ext_resource type="Script" path="res://MetaCubeAnimation.gd" id="1_5k8xm"]
+
+[node name="MetaCubeAnimation" type="Node2D"]
+script = ExtResource("1_5k8xm")

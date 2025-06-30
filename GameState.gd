@@ -6,6 +6,7 @@ signal train_station_visited_after_antichrist_death
 var antichrist_is_dead: bool = false
 var has_visited_train_station_after_antichrist: bool = false
 var jeffery_mission_completed: bool = false
+var return_position: Vector2 = Vector2(0, 0)  # Position to spawn player when returning to Main scene
 
 func _ready():
 	add_to_group("game_state")

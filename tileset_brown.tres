@@ -1,17 +1,22 @@
-[gd_resource type="TileSet" load_steps=3 format=3 uid="uid://g1ov1hyr14v8"]
+[gd_resource type="TileSet" load_steps=5 format=3 uid="uid://g1ov1hyr14v8"]
 
 [ext_resource type="Texture2D" uid="uid://berwas32ga4u7" path="res://Assets/TilesGround_Brown.PNG" id="1_ground"]
+[ext_resource type="Texture2D" uid="uid://b2iw0agxh34ve" path="res://Assets/OldTiles.PNG" id="2_oldtiles"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_1"]
 texture = ExtResource("1_ground")
 texture_region_size = Vector2i(32, 32)
-0:0/next_alternative_id = 3
+0:0/next_alternative_id = 12
 0:0/0 = 0
 0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
 0:0/1 = 1
 0:0/1/physics_layer_0/polygon_0/points = PackedVector2Array(-16, 16, 16, -16, 16, 16)
 0:0/2 = 2
 0:0/2/physics_layer_0/polygon_0/points = PackedVector2Array(-16, 8, 16, -8, 16, 16, -16, 16)
+0:0/10 = 10
+0:0/10/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+0:0/11 = 11
+0:0/11/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
 1:0/next_alternative_id = 3
 1:0/0 = 0
 1:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
@@ -44,7 +49,14 @@ texture_region_size = Vector2i(32, 32)
 3:1/0 = 0
 3:1/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
 
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_2"]
+texture = ExtResource("2_oldtiles")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
 [resource]
 tile_size = Vector2i(32, 32)
 physics_layer_0/collision_layer = 1
 sources/0 = SubResource("TileSetAtlasSource_1")
+sources/1 = SubResource("TileSetAtlasSource_2")

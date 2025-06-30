@@ -48,6 +48,18 @@ func setup_background_music():
 		print("Train station background music setup complete")
 
 func _input(event):
+	# Q key teleport to Wyoming (debug builds only)
+	if OS.is_debug_build() and event is InputEventKey and event.pressed and event.keycode == KEY_Q:
+		print("Q key pressed - teleporting to Wyoming")
+		teleport_to_wyoming()
+		return
+	
+	# Also handle 1 key as backup (debug builds only)
+	if OS.is_debug_build() and event is InputEventKey and event.pressed and event.keycode == KEY_1:
+		print("1 key pressed - teleporting to Wyoming")
+		teleport_to_wyoming()
+		return
+	
 	if event.is_action_pressed("interact") and not is_train_sequence_active:
 		# Check if player is near the train (within interaction range)
 		var distance_to_train = player.global_position.distance_to(train.global_position)
@@ -119,3 +131,34 @@ func update_exit_door_destination():
 			# Before taking train, stay at Main scene
 			exit_door.next_scene_path = "res://Main.tscn"
 			print("Exit door goes to Main (train not taken)")
+
+func teleport_to_wyoming():
+	print("Teleporting to Wyoming (stopping all tweens first)")
+	
+	# Stop any active tweens that might be blocking scene change
+	if train_tween:
+		train_tween.kill()
+	
+	# Stop any other tweens in the scene
+	var all_tweens = get_tree().get_nodes_in_group("tween")
+	for tween in all_tweens:
+		if tween and tween.has_method("kill"):
+			tween.kill()
+	
+	# Re-enable player movement in case it was disabled
+	if player:
+		player.can_move = true
+	
+	# Use call_deferred to ensure scene change happens after current frame
+	call_deferred("_do_scene_change")
+
+func _do_scene_change():
+	print("Actually changing scene now")
+	var error = get_tree().change_scene_to_file("res://Wyoming.tscn")
+	if error != OK:
+		print("ERROR: Failed to change scene: ", error)
+		print("Error code ", error, " - trying fallback")
+		# Try with call_deferred again as last resort
+		get_tree().call_deferred("change_scene_to_file", "res://Wyoming.tscn")
+	else:
+		print("Scene change initiated successfully")

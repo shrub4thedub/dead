@@ -1,0 +1,18 @@
+[gd_scene load_steps=4 format=3 uid="uid://bub001"]
+
+[ext_resource type="Script" uid="uid://bubscript001" path="res://Bub.gd" id="1_bub"]
+[ext_resource type="Texture2D" uid="uid://bub_texture001" path="res://Assets/bub.PNG" id="2_bub_texture"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_1"]
+radius = 75.0
+
+[node name="Bub" type="Area2D"]
+script = ExtResource("1_bub")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+modulate = Color(1, 0.6, 0.6, 0.9)
+scale = Vector2(0.213, 0.213)
+texture = ExtResource("2_bub_texture")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_1")

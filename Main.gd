@@ -16,19 +16,21 @@ func _ready():
 	
 	# Check if we're returning from train station after Antichrist death
 	is_returning_from_train = GameState.antichrist_is_dead and GameState.has_visited_train_station_after_antichrist
-	print("Main: is_returning_from_train=", is_returning_from_train, " antichrist_dead=", GameState.antichrist_is_dead, " visited_train=", GameState.has_visited_train_station_after_antichrist)
+	var has_return_position = GameState.return_position != Vector2(0, 0)
+	print("Main: is_returning_from_train=", is_returning_from_train, " antichrist_dead=", GameState.antichrist_is_dead, " visited_train=", GameState.has_visited_train_station_after_antichrist, " return_pos=", GameState.return_position)
 	
-	# Only show title screen on first load (not when returning from train)
-	if not is_returning_from_train:
+	# Only show title screen on first load (not when returning from train or with return position)
+	if not is_returning_from_train and not has_return_position:
 		setup_title_screen()
 	else:
 		is_title_active = false
-		# Position player near Handler when returning from train
-		call_deferred("position_player_near_handler")
+		# Position player based on return conditions
+		if has_return_position:
+			call_deferred("position_player_at_return_position")
+		else:
+			call_deferred("position_player_near_handler")
 	
 	connect_coin_signals()
-	# Setup train station door
-	call_deferred("setup_train_station_door")
 
 func setup_effects_system():
 	# Create effects manager
@@ -47,6 +49,11 @@ func setup_effects_system():
 	if debug_ui_node and player_node:
 		player_node.debug_ui = debug_ui_node
 		print("Main: Connected debug UI to player")
+		
+		# Ensure player can move (fix for teleportation movement freeze)
+		if "can_move" in player_node:
+			player_node.can_move = true
+			print("Main: Player movement enabled")
 	
 	# Setup background music
 	setup_background_music()
@@ -100,11 +107,12 @@ func setup_title_screen():
 	# Create "Click to Start" text
 	title_text = Label.new()
 	title_text.text = "Click to Start"
-	var georgia_font = load("res://Assets/georgia-2/georgia.ttf") as FontFile
-	title_text.add_theme_font_override("font", georgia_font)
+	var liberation_font = load("res://Assets/LiberationSans-BoldItalic.ttf") as FontFile
+	title_text.add_theme_font_override("font", liberation_font)
 	title_text.add_theme_font_size_override("font_size", 32)
 	title_text.add_theme_color_override("font_color", Color.WHITE)
 	title_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_text.scale = Vector2(1.0, 1.2)  # 1.2x vertical stretch
 	title_text.position = Vector2(-100, -16)  # Center text relative to container
 	text_container.add_child(title_text)
 	
@@ -118,9 +126,9 @@ func _input(event):
 	if is_title_active and event is InputEventMouseButton and event.pressed:
 		hide_title_screen()
 	
-	# Debug: Press Q to go to Wyoming level
-	if event is InputEventKey and event.pressed and event.keycode == KEY_Q:
-		get_tree().change_scene_to_file("res://NewLevel.tscn")
+	# Debug: Press Q to go to Wyoming level (debug builds only)
+	if OS.is_debug_build() and event is InputEventKey and event.pressed and event.keycode == KEY_Q:
+		teleport_to_wyoming()
 
 func hide_title_screen():
 	if title_screen and is_title_active:
@@ -163,13 +171,6 @@ func _on_coin_collected():
 	if effects_manager:
 		effects_manager.add_combo("cashgrab")
 
-func setup_train_station_door():
-	# Initially block the train station door
-	var door = get_node_or_null("Door")
-	if door:
-		door.is_locked = true
-		print("Train station door is locked until Handler dialogue complete")
-
 func setup_game_state():
 	# GameState is now an autoload singleton, so no need to create it here
 	pass
@@ -184,17 +185,14 @@ func position_player_near_handler():
 		player.global_position = handler.global_position + Vector2(-150, 0)
 		print("Player positioned near Handler after train return")
 
-func unlock_train_station():
-	var door = get_node_or_null("Door")
-	if door:
-		door.is_locked = false
-		print("Train station door is now unlocked!")
-		# Add visual feedback
-		var label = get_node_or_null("UnlockLabel")
-		if label:
-			label.visible = true
-			label.text = "Train Station Unlocked!"
-			# Fade out after 3 seconds
-			var tween = create_tween()
-			tween.tween_property(label, "modulate:a", 1.0, 0.0)  # Keep visible
-			tween.tween_property(label, "modulate:a", 0.0, 1.0).set_delay(3.0)
+func position_player_at_return_position():
+	var player = get_node_or_null("Player")
+	if player:
+		player.global_position = GameState.return_position
+		print("Player positioned at return position: ", GameState.return_position)
+		# Clear the return position after using it
+		GameState.return_position = Vector2(0, 0)
+
+func teleport_to_wyoming():
+	print("Main: Debug teleport to Wyoming using TeleportManager")
+	TeleportManager.teleport_to_wyoming()

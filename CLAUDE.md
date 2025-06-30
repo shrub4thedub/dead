@@ -107,10 +107,33 @@ Since this is a Godot project, development is primarily done through the Godot E
 - Dialogue system finds NPCs via groups and positions text dynamically
 - Grappling system integrated into physics with visual rope rendering
 
+**Dynamic Sky System (`SkyTileManager.gd`)**
+- Seamless background tiling using `Seamless_Sky.PNG` (500x500 tiles)
+- Dynamic tile creation/removal based on camera position for performance optimization
+- Replaces static sky grid with intelligent tile management system
+
+**Department Building System (`DepartmentBuilding.gd`)**
+- Dual-sprite crossfade system: exterior and interior views with different z-indices
+- Area2D-based interaction detection for smooth entry/exit transitions
+- Safe node referencing with `get_node_or_null()` to prevent "previously freed" errors
+- Interior objects (Manager/Handler) managed through visibility toggling
+
+### Input Architecture
+
+**Godot Action System (project.godot)**
+- Jump: Spacebar, Dash: Shift, Slash/Grapple: Left mouse, Interact: F key
+- Accessed via `Input.is_action_just_pressed()` with input buffering system
+
+**Hardcoded Input (Player.gd)**
+- Movement: A/D keys via `Input.is_key_pressed()` for precise control
+- Respawn: R key, Roll: Right mouse button via `_input(event)`
+- Movement restrictions during rolling states and directional blocking system
+
 ### Important Implementation Notes
 
 - Sprite animations only use speed-based frames when grounded (air uses idle except air dash)
 - Combo system designed to be forgiving: no midair speed resets, generous timeouts, no harsh repetition penalties
 - Floating animations provide ethereal feel: player floats on ground, NPCs float continuously
 - Physics-based grappling replaces old rigid constraint system for natural swinging motion
-- Fish NPC speaks with context-aware dialogue and visual feedback (shaking, floating)
+- Department building uses parallel tweening for seamless crossfade without visual gaps
+- Sky system dynamically manages tiles around camera position for infinite scrolling background

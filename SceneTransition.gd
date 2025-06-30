@@ -33,8 +33,8 @@ func _ready():
 		call_deferred("start_transition_effect")
 
 func _input(event):
-	# Debug: Press H to trigger transition effect
-	if event is InputEventKey and event.pressed and event.keycode == KEY_H:
+	# Debug: Press H to trigger transition effect (debug builds only)
+	if OS.is_debug_build() and event is InputEventKey and event.pressed and event.keycode == KEY_H:
 		start_transition_effect()
 
 func start_transition_effect():
@@ -58,21 +58,33 @@ func start_transition_effect():
 
 # Smooth scene transition with fade to black
 func start_scene_transition(target_scene_path: String):
-	# Start the blur effect
+	print("Starting scene transition to: ", target_scene_path)
+	
+	# Skip file existence check in exported builds (FileAccess might not work)
+	if OS.is_debug_build():
+		if not FileAccess.file_exists(target_scene_path):
+			print("ERROR: Scene file does not exist: ", target_scene_path)
+			return
+	
+	# Start the blur effect (will handle shader loading gracefully)
 	start_transition_effect()
 	
-	# Create a fade-to-black overlay to hide the scene change
+	# Immediately start fade to black
+	transition_overlay.modulate.a = 0.0
 	var fade_tween = create_tween()
-	
-	# Fade to black over 0.4 seconds
 	fade_tween.tween_property(transition_overlay, "modulate:a", 1.0, 0.4)
 	
-	# Change scene at peak darkness
-	fade_tween.tween_callback(func(): get_tree().change_scene_to_file(target_scene_path))
-	
-	# Wait a frame for new scene to load, then fade back in
-	fade_tween.tween_callback(func(): await get_tree().process_frame).set_delay(0.05)
-	fade_tween.tween_property(transition_overlay, "modulate:a", 0.0, 0.4).set_delay(0.1)
+	# Change scene after fade
+	fade_tween.tween_callback(func():
+		print("Tween callback - changing scene to: ", target_scene_path)
+		var error = get_tree().change_scene_to_file(target_scene_path)
+		if error != OK:
+			print("ERROR: Failed to change scene: ", error)
+			# Reset overlay if scene change failed
+			transition_overlay.modulate.a = 0.0
+		else:
+			print("Scene change successful")
+	).set_delay(0.4)
 
 func set_overlay_color(color: Color):
 	transition_overlay.color = color
@@ -106,18 +118,17 @@ func create_screen_trails():
 	var screen_image = viewport.get_texture().get_image()
 	var screen_texture = ImageTexture.create_from_image(screen_image)
 	
-	# Load the gaussian blur shader, fallback to simple blur
-	var blur_shader = load("res://gaussian_blur.gdshader")
-	if not blur_shader:
-		print("WARNING: Failed to load gaussian_blur.gdshader, trying simple blur")
-		blur_shader = load("res://simple_blur.gdshader")
-		if not blur_shader:
-			print("ERROR: Failed to load both blur shaders")
-			return
-		else:
-			print("Successfully loaded simple blur shader")
-	else:
+	# Load the gaussian blur shader, fallback to simple blur, gracefully handle missing shaders
+	var blur_shader = null
+	if ResourceLoader.exists("res://gaussian_blur.gdshader"):
+		blur_shader = load("res://gaussian_blur.gdshader")
 		print("Successfully loaded gaussian blur shader")
+	elif ResourceLoader.exists("res://simple_blur.gdshader"):
+		blur_shader = load("res://simple_blur.gdshader")
+		print("Successfully loaded simple blur shader")
+	else:
+		print("WARNING: No blur shaders found, skipping visual effects")
+		# Continue without shaders - just show basic screen captures
 	
 	# Get viewport size for proper sizing
 	var viewport_size = viewport.get_visible_rect().size
@@ -129,24 +140,30 @@ func create_screen_trails():
 		trail_copy.size = viewport_size
 		trail_copy.position = Vector2.ZERO
 		
-		# Create shader material with blur
-		var material = ShaderMaterial.new()
-		material.shader = blur_shader
-		var blur_value = float(i + 1) * 0.5
+		# Create shader material with blur if shader is available
+		if blur_shader:
+			var material = ShaderMaterial.new()
+			material.shader = blur_shader
+			var blur_value = float(i + 1) * 0.5
+			
+			# Set blur parameter (try both names)
+			material.set_shader_parameter("blur_strength", blur_value)
+			material.set_shader_parameter("blur_amount", blur_value)
+			
+			# Set alpha multiplier for proper opacity
+			var opacity = 0.4 - (i * 0.05)  # Decreasing opacity: 0.4, 0.35, 0.3, 0.25, 0.2, 0.15
+			material.set_shader_parameter("alpha_multiplier", max(0.1, opacity))
+			
+			trail_copy.material = material
+		else:
+			# Fallback: use modulate for opacity without shader effects
+			var opacity = 0.4 - (i * 0.05)
+			trail_copy.modulate = Color(1.0, 1.0, 1.0, max(0.1, opacity))
+		print("Created trail ", i, " with shader: ", blur_shader != null)
 		
-		# Set blur parameter (try both names)
-		material.set_shader_parameter("blur_strength", blur_value)
-		material.set_shader_parameter("blur_amount", blur_value)
-		
-		# Set alpha multiplier for proper opacity
-		var opacity = 0.4 - (i * 0.05)  # Decreasing opacity: 0.4, 0.35, 0.3, 0.25, 0.2, 0.15
-		material.set_shader_parameter("alpha_multiplier", max(0.1, opacity))
-		
-		trail_copy.material = material
-		print("Created trail ", i, " with blur strength: ", blur_value)
-		
-		# Set modulate to full opacity since alpha is handled in shader
-		trail_copy.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		# Set modulate to full opacity only if using shader (otherwise already set above)
+		if blur_shader:
+			trail_copy.modulate = Color(1.0, 1.0, 1.0, 1.0)
 		trail_copy.z_index = 15 + i
 		
 		# Use simple stretch to maintain aspect
@@ -187,7 +204,7 @@ func _process(delta):
 				# Gentler rotation with floating motion  
 				trail.rotation += sin(time_offset * 2.0 + i) * 0.015 * delta
 				
-				# Dynamic blur strength modulation for shader
+				# Dynamic blur strength modulation for shader (only if shader is available)
 				if trail.material and trail.material is ShaderMaterial:
 					var base_strength = float(i + 1) * 0.5
 					var dynamic_strength = base_strength + sin(time_offset * 1.5) * 1.0
@@ -235,13 +252,15 @@ func create_blended_transition():
 	var viewport = get_viewport()
 	var viewport_size = viewport.get_visible_rect().size
 	
-	# Load blur shader
-	var blur_shader = load("res://gaussian_blur.gdshader")
-	if not blur_shader:
+	# Load blur shader with graceful fallback
+	var blur_shader = null
+	if ResourceLoader.exists("res://gaussian_blur.gdshader"):
+		blur_shader = load("res://gaussian_blur.gdshader")
+	elif ResourceLoader.exists("res://simple_blur.gdshader"):
 		blur_shader = load("res://simple_blur.gdshader")
-		if not blur_shader:
-			print("ERROR: Failed to load blur shaders")
-			return
+	else:
+		print("WARNING: No blur shaders found for blended transition")
+		# Continue without shaders
 	
 	# Create blended copies showing transition from old to new scene
 	for i in range(6):
@@ -258,16 +277,7 @@ func create_blended_transition():
 		else:
 			trail_copy.texture = new_scene_texture
 		
-		# Create shader material with blur
-		var material = ShaderMaterial.new()
-		material.shader = blur_shader
-		var blur_value = float(i + 1) * 0.3
-		
-		# Set shader parameters
-		material.set_shader_parameter("blur_strength", blur_value)
-		material.set_shader_parameter("blur_amount", blur_value)
-		
-		# Set alpha based on blend ratio and position
+		# Create shader material with blur if shader is available
 		var opacity = 0.4 - (i * 0.05)
 		if blend_ratio < 0.5:
 			# Old scene fading out
@@ -276,10 +286,21 @@ func create_blended_transition():
 			# New scene fading in
 			opacity *= ((blend_ratio - 0.5) * 2.0)
 		
-		material.set_shader_parameter("alpha_multiplier", max(0.1, opacity))
-		
-		trail_copy.material = material
-		trail_copy.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		if blur_shader:
+			var material = ShaderMaterial.new()
+			material.shader = blur_shader
+			var blur_value = float(i + 1) * 0.3
+			
+			# Set shader parameters
+			material.set_shader_parameter("blur_strength", blur_value)
+			material.set_shader_parameter("blur_amount", blur_value)
+			material.set_shader_parameter("alpha_multiplier", max(0.1, opacity))
+			
+			trail_copy.material = material
+			trail_copy.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		else:
+			# Fallback: use modulate for opacity without shader effects
+			trail_copy.modulate = Color(1.0, 1.0, 1.0, max(0.1, opacity))
 		trail_copy.z_index = 15 + i
 		trail_copy.stretch_mode = TextureRect.STRETCH_KEEP
 		

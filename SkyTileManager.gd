@@ -1,15 +1,31 @@
 extends Node2D
 
+# Preload textures to avoid runtime loading issues
+var default_sky_texture = preload("res://Assets/Seamless_Sky.PNG")
+var wyoming_sky_texture = preload("res://Assets/NewWyomingSeamlessSky.jpg")  # Use the actual file that exists
+
 # Sky tile management
 var sky_texture: Texture2D
-var tile_size: Vector2 = Vector2(500, 500)  # Matches the actual Seamless_Sky.PNG size
+var tile_size: Vector2
 var active_tiles: Dictionary = {}
 var camera: Camera2D
 var last_camera_pos: Vector2
 
 func _ready():
-	# Load the seamless sky texture
-	sky_texture = load("res://Assets/Seamless_Sky.PNG")
+	# Determine which sky texture to use based on current scene
+	var scene_name = get_tree().current_scene.scene_file_path
+	print("SkyTileManager: Current scene path: ", scene_name)
+	
+	if scene_name.contains("Wyoming"):
+		print("SkyTileManager: Using Wyoming sky texture")
+		sky_texture = wyoming_sky_texture
+		tile_size = Vector2(1414, 1414)  # Matches NewWyomingSeamlessSky.jpg size
+	else:
+		print("SkyTileManager: Using default sky texture")
+		sky_texture = default_sky_texture
+		tile_size = Vector2(500, 500)  # Matches Seamless_Sky.PNG size
+	
+	print("SkyTileManager: Sky texture loaded successfully, tile_size=", tile_size)
 	
 	# Find the camera (it's attached to the player)
 	call_deferred("find_camera")
@@ -17,11 +33,15 @@ func _ready():
 func find_camera():
 	var player = get_node("../Player")
 	if player:
-		camera = player.get_node("Camera2D2")
+		# Try to find Camera2D2 first (Main scene), then Camera2D (other scenes)
+		camera = player.get_node_or_null("Camera2D2")
+		if not camera:
+			camera = player.get_node_or_null("Camera2D")
+		
 		if camera:
-			print("SkyTileManager: Found camera")
+			print("SkyTileManager: Found camera: ", camera.name)
 		else:
-			print("SkyTileManager: Camera not found")
+			print("SkyTileManager: No camera found in player")
 	else:
 		print("SkyTileManager: Player not found")
 
@@ -69,6 +89,10 @@ func update_sky_tiles(camera_pos: Vector2):
 		remove_sky_tile(tile_key)
 
 func create_sky_tile(tile_pos: Vector2):
+	if not sky_texture:
+		print("ERROR: Cannot create sky tile - no texture loaded")
+		return
+	
 	var sprite = Sprite2D.new()
 	sprite.texture = sky_texture
 	sprite.position = tile_pos + tile_size / 2  # Center the sprite on the tile

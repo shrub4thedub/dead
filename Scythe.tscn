@@ -28,6 +28,10 @@
 [ext_resource type="Texture2D" uid="uid://diag14" path="res://Assets/Scythe_14-Diag_down.png" id="26_diag14"]
 [ext_resource type="Texture2D" uid="uid://diag15" path="res://Assets/Scythe_15-Diag_down.png" id="27_diag15"]
 
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_scythe"]
+radius = 30.0
+height = 120.0
+
 [sub_resource type="SpriteFrames" id="SpriteFrames_scythe"]
 animations = [{
 "frames": [{
@@ -183,3 +187,10 @@ scale = Vector2(0.18, 0.18)
 sprite_frames = SubResource("SpriteFrames_scythe")
 animation = &"idle"
 autoplay = "idle"
+
+[node name="HitArea" type="Area2D" parent="."]
+monitoring = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HitArea"]
+position = Vector2(0, -40)
+shape = SubResource("CapsuleShape2D_scythe")

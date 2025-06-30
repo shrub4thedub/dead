@@ -20,6 +20,15 @@ func _ready():
 	
 	# Set green color for key bulbs
 	sprite.modulate = Color(0.3, 1.0, 0.3)  # Bright green tint
+	
+	# Auto-assign key group based on node name if not set
+	if key_wall_group == "":
+		if name.contains("4"):
+			key_wall_group = "keywall2"
+		elif name.contains("5"):
+			key_wall_group = "keywall3"
+		else:
+			key_wall_group = "keywall1"  # Default for KeyBulb1-3
 
 func _physics_process(delta):
 	if not is_activated:

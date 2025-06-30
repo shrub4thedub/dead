@@ -75,13 +75,10 @@ var post_mission_dialogue = [
 		"Some kind of evil baby, or some shit like that. I dunno, I never understood Christian eschatology.",
 	],
 	[
-		"Anyway, it was born on Earth, somewhere called Wyoming. Go catch the next interdimensional train and kill it.",
+		"Anyway, it was born on Earth, somewhere called Wyoming. I'll teleport you there now.",
 	],
 	[
 		"Get moving, we got a deadline to meet, or this kid might trigger the apocalypse or something.",
-	],
-	[
-		"The train station is now unlocked for you. Go catch that train to Wyoming.",
 	]
 ]
 
@@ -114,9 +111,10 @@ func _ready():
 	add_to_group("handler")
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
-	# Set Georgia font for prompt label
-	var georgia_font = load("res://Assets/georgia-2/georgia.ttf") as FontFile
-	prompt_label.add_theme_font_override("font", georgia_font)
+	# Set LiberationSans Bold Italic font for prompt label
+	var liberation_font = load("res://Assets/LiberationSans-BoldItalic.ttf") as FontFile
+	prompt_label.add_theme_font_override("font", liberation_font)
+	prompt_label.scale = Vector2(1.0, 1.2)  # 1.2x vertical stretch
 	# Find dialogue system after scene is ready
 	call_deferred("find_dialogue_system")
 	# Connect to game state signals
@@ -166,6 +164,8 @@ func talk_to_handler():
 		if prompt_label:
 			prompt_label.visible = false
 		
+		print("Handler: talk_to_handler() called. GameState: antichrist_dead=", GameState.antichrist_is_dead, " jeffery_mission_completed=", GameState.jeffery_mission_completed)
+		
 		# Check GameState for mission progress instead of local variables
 		if GameState.antichrist_is_dead:
 			# Use post-antichrist dialogue
@@ -175,6 +175,7 @@ func talk_to_handler():
 			post_antichrist_index = (post_antichrist_index + 1) % post_antichrist_dialogue.size()
 		elif GameState.jeffery_mission_completed:
 			# Use post-mission dialogue
+			print("Handler: Using post-mission dialogue, index=", post_mission_index, "/", post_mission_dialogue.size())
 			var current_conversation = post_mission_dialogue[post_mission_index]
 			dialogue_system.start_conversation("Handler", current_conversation)
 			
@@ -183,13 +184,20 @@ func talk_to_handler():
 				show_mission_status("Mission: Kill the Antichrist in Wyoming", Color.WHITE)
 			
 			post_mission_index = (post_mission_index + 1) % post_mission_dialogue.size()
+			print("Handler: Incremented post_mission_index to ", post_mission_index)
 			
-			# Check if we just finished the final dialogue that unlocks train station
-			if post_mission_index == 0 and post_mission_dialogue.size() > 0:
-				# We've completed all post-mission dialogue, unlock train station
-				var main_scene = get_tree().get_first_node_in_group("main_scene")
-				if main_scene and main_scene.has_method("unlock_train_station"):
-					main_scene.unlock_train_station()
+			# For builds compatibility: teleport immediately after conversation 6 (index 7 after increment)
+			# This is the "Anyway, it was born on Earth, somewhere called Wyoming. I'll teleport you there now." line
+			if post_mission_index == 7:  # Just finished conversation 6 (the "I'll teleport you there now" line)
+				print("Handler: Wyoming briefing completed, triggering immediate teleport")
+				call_deferred("teleport_to_wyoming")
+			# Original logic: Check if we just finished the final dialogue that teleports to Wyoming  
+			elif post_mission_index == 0 and post_mission_dialogue.size() > 0:
+				print("Handler: All post-mission dialogue completed, triggering teleport")
+				# We've completed all post-mission dialogue, teleport to Wyoming
+				call_deferred("teleport_to_wyoming")
+			else:
+				print("Handler: Still in post-mission dialogue, ", post_mission_dialogue.size() - post_mission_index, " conversations remaining")
 		else:
 			# Check if player has spoken to manager first
 			check_manager_interaction()
@@ -223,6 +231,7 @@ func _on_mission_completed():
 	# This function is called by Fish when mission is completed
 	# But we now use GameState.jeffery_mission_completed instead
 	print("Handler: Mission completed callback received")
+	print("Handler: Current post_mission_index=", post_mission_index, " GameState.jeffery_mission_completed=", GameState.jeffery_mission_completed)
 
 func check_manager_interaction():
 	# Check if the manager has progressed beyond first conversation
@@ -259,3 +268,7 @@ func spawn_door_near_handler():
 	get_parent().add_child(door_instance)
 	
 	print("Handler: Door spawned near handler")
+
+func teleport_to_wyoming():
+	print("Handler: Teleporting player to Wyoming using TeleportManager")
+	TeleportManager.teleport_to_wyoming()

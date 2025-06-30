@@ -1,5 +1,8 @@
 extends CharacterBody2D
 
+# Player signals
+signal player_respawned
+
 # Effects and UI references
 var effects_manager
 var game_ui
@@ -33,14 +36,16 @@ const MAX_GROUND_TIME_BONUS = 5.0
 @onready var sprite = $AnimatedSprite2D
 @onready var dash_icon = $DashIcon
 @onready var wall_icon = $WallIcon
-@onready var slash_effect = $SlashEffect
-@onready var slash_area = $SlashArea
+# Old slash system removed - now using scythe collision
 @onready var camera = $Camera2D
 @onready var scythe = $Scythe
 
 # Dash direction indicator
 var dash_direction_indicator: Sprite2D
 var is_arrow_animating = false
+
+# Slash hitbox positioning
+var slash_radius = 100.0  # Distance from player center for slash hitbox
 
 # Animation variables
 var base_scale = Vector2(1, 1)
@@ -169,7 +174,7 @@ var wall_climb_timer = 0.0
 var wall_climb_direction = 0  # Store the wall direction when climb starts
 var has_wall_kicked = false
 var can_wall_kick = false
-var slash_effect_timer = 0.0
+# Visual slash effect removed
 var bulb_delay_timer = 0.0
 const GROUND_TIME_REQUIRED = 0.8  # Reduced time required for reverse boost
 const MIN_SPEED_FOR_BOOST = 250.0  # Reduced minimum speed for boost
@@ -237,6 +242,31 @@ var dive_impact_frame = 0
 var is_dive_impacting = false
 var dive_impact_timer = 0.0
 const DIVE_IMPACT_FRAME_DURATION = 1.0 / 36.0  # 36 FPS for dive impact (faster than roll)
+
+# Wall bounce dash replenishment tracking
+var last_wall_bounce_position = Vector2.ZERO
+var last_wall_bounce_time = 0.0
+const WALL_BOUNCE_COOLDOWN = 2.5  # 2.5 seconds between any wall bounce dash replenishments
+const WALL_BOUNCE_DISTANCE_THRESHOLD = 50.0  # How close to consider "same wall"
+
+# Dive duration tracking for combo points
+var dive_start_time = 0.0
+var dive_duration_seconds = 0
+var last_dive_combo_second = 0
+
+# Camera zoom for diving and high speed
+var default_camera_zoom = Vector2(1.0, 1.0)
+var dive_camera_zoom = Vector2(0.8, 0.8)  # Zoom out to 80%
+var speed_camera_zoom = Vector2(0.8, 0.8)  # Zoom out to 80% for high speed
+var camera_zoom_tween: Tween
+var is_speed_zoomed = false
+const SPEED_ZOOM_THRESHOLD = 1650.0
+var air_roll_allow_ground_transition = true  # Controls ground roll transition when air roll ends
+var recent_air_dash_timer = 0.0  # Prevents roll leap shortly after air dash
+var roll_leap_combo_cooldown = 0.0  # Prevents multiple combo points from same roll leap
+const AIR_DASH_ROLL_LEAP_COOLDOWN = 0.3  # 300ms cooldown
+var wall_kick_disabled_timer = 0.0  # Prevents wall kick after dive bounce
+const WALL_KICK_DISABLE_DURATION = 0.5  # 500ms cooldown
 const ROLL_ANIMATION_FRAMES = 10
 const ROLL_ANIMATION_FPS = 20.0
 const ROLL_FRAME_DURATION = 1.0 / ROLL_ANIMATION_FPS  # 0.05 seconds per frame
@@ -301,6 +331,11 @@ func _ready():
 		if camera:
 			camera.enabled = false
 	
+	# Initialize camera zoom
+	if camera:
+		default_camera_zoom = camera.zoom
+		camera.zoom = default_camera_zoom
+	
 	# Find effects manager and UI
 	call_deferred("setup_references")
 	
@@ -317,6 +352,7 @@ func _ready():
 	
 	# Setup dash direction indicator
 	setup_dash_indicator()
+	
 	
 	# Load roll frame textures
 	load_roll_frames()
@@ -368,9 +404,7 @@ func setup_references():
 	effects_manager = get_tree().get_first_node_in_group("effects_manager")
 	game_ui = get_tree().get_first_node_in_group("game_ui")
 	
-	# Connect slash area signal if it exists
-	if slash_area:
-		slash_area.area_entered.connect(_on_slash_area_entered)
+	# SlashArea signal connection removed - scythe handles its own collision now
 	
 	# Connect to effects manager for combo updates
 	if effects_manager:
@@ -404,6 +438,7 @@ func _input(event):
 					end_roll()
 				elif is_air_rolling:
 					# Cancel air roll if already air rolling
+					end_dive_camera_zoom()
 					end_air_roll()
 				else:
 					# Start roll if not rolling
@@ -449,6 +484,9 @@ func set_zipline_mode(zipline_active: bool):
 		is_air_rolling = false
 		is_wall_sliding = false
 		is_wall_climbing = false
+		
+		# Reset camera zoom when entering zipline
+		end_dive_camera_zoom()
 		# Release grapple if active
 		if is_grappling:
 			release_grapple()
@@ -469,14 +507,7 @@ func update_sprite_color_state(delta: float):
 		if color_state_timer <= 0:
 			reset_sprite_color_to_default()
 
-func _on_slash_area_entered(area):
-	print("SlashArea detected: ", area.name)
-	# Check if we hit a dash bulb
-	if area.has_method("_on_slash_hit"):
-		print("Calling _on_slash_hit on: ", area.name)
-		area._on_slash_hit(self)
-	else:
-		print("Area ", area.name, " doesn't have _on_slash_hit method")
+# SlashArea callback removed - scythe handles its own collision detection now
 
 func setup_dash_streak():
 	# Create dash streak sprite
@@ -496,75 +527,18 @@ func setup_dash_streak():
 	dash_streak.scale = Vector2(trail_scale, trail_scale)  # Scale both dimensions equally
 
 func animate_slash_effect(slash_direction: Vector2):
-	if not slash_effect:
-		return
-	
-	# Hide effect initially
-	slash_effect.modulate.a = 0.0
-	
-	# Position effect at 80 pixels to match hitbox
-	slash_effect.position = slash_direction * 80
-	slash_effect.rotation = atan2(slash_direction.y, slash_direction.x) + PI/2  # Rotate 90 degrees to match hitbox
-	slash_effect.scale = Vector2(1.0, 1.0)
-	
-	# Create tween for the visual effect
-	var slash_tween = create_tween()
-	slash_tween.set_parallel(true)
-	
-	# Wait for the delay (0.15s) then show the effect
-	slash_tween.tween_property(slash_effect, "modulate:a", 1.0, 0.05).set_delay(0.15)
-	slash_tween.tween_property(slash_effect, "scale", Vector2(1.5, 2.0), 0.05).set_delay(0.15)
-	slash_tween.tween_property(slash_effect, "modulate", Color.WHITE, 0.05).set_delay(0.15)
-	
-	# Keep effect visible for active duration (0.2s)
-	slash_tween.tween_property(slash_effect, "modulate", Color.CYAN, 0.2).set_delay(0.2)
-	
-	# Fade out after active duration
-	slash_tween.tween_property(slash_effect, "modulate:a", 0.0, 0.1).set_delay(0.4)
-	slash_tween.tween_property(slash_effect, "scale", Vector2(1.0, 1.5), 0.1).set_delay(0.4)
+	# Visual slash effect disabled - only hitbox remains active
+	return
 
 func activate_slash_collision(slash_direction: Vector2):
-	if not slash_area:
-		print("SlashArea not found!")
-		return
-	
 	# Check if scythe is already slashing
 	if scythe and scythe.is_slashing:
 		print("Cannot slash - scythe is still slashing")
 		return
 	
-	# Trigger scythe animation
+	# Trigger scythe animation - scythe handles its own collision detection now
 	if scythe:
 		scythe.perform_slash(slash_direction)
-	
-	# Position slash area at 80 pixels from player
-	slash_area.position = slash_direction * 80  # 80 pixel range
-	slash_area.rotation = atan2(slash_direction.y, slash_direction.x) + PI/2  # Rotate 90 degrees
-	
-	# Also rotate the collision shape directly
-	var collision_shape = slash_area.get_node("CollisionShape2D")
-	if collision_shape:
-		collision_shape.rotation = PI/2
-	
-	print("SlashArea positioned at: ", slash_area.global_position)
-	
-	# Delay hitbox activation as requested
-	var activation_delay = 0.15  # Reduced delay as requested
-	var activation_timer = get_tree().create_timer(activation_delay)
-	activation_timer.timeout.connect(func():
-		if slash_area:
-			print("Activating SlashArea monitoring")
-			slash_area.set_deferred("monitoring", true)
-			
-			# Keep hitbox active for 0.4 seconds for better hit detection
-			print("Scythe: Setting up 0.4s hitbox timer")
-			var slash_timer = get_tree().create_timer(0.4)  # 0.4 second duration
-			slash_timer.timeout.connect(func(): 
-				if slash_area:
-					print("Deactivating SlashArea monitoring after 0.4 seconds")
-					slash_area.monitoring = false
-			)
-	)
 
 func animate_player_slash(slash_direction: Vector2):
 	# Player recoil and slash pose animation
@@ -698,13 +672,17 @@ func respawn():
 	dash_timer = 0.0
 	wall_contact_timer = 0.0
 	wall_climb_timer = 0.0
-	slash_effect_timer = 0.0
+	# Visual slash effect removed
 	bulb_delay_timer = 0.0
 	
 	# Reset roll animation
 	roll_animation_timer = 0.0
 	roll_current_frame = 0
 	roll_animation_completed = false
+	
+	# Reset combo system
+	if effects_manager:
+		effects_manager.reset_combo()
 	
 	# Reset visual state
 	reset_sprite_color_to_default()
@@ -717,8 +695,7 @@ func respawn():
 	restore_normal_sprite()
 	
 	# Hide effects
-	if slash_effect:
-		slash_effect.visible = false
+	# Visual slash effect removed
 	end_dash_streak()
 	
 	
@@ -730,6 +707,9 @@ func respawn():
 	
 	# Reset key bulb and wall system
 	reset_key_system()
+	
+	# Emit signal to notify other objects that player has respawned
+	player_respawned.emit()
 
 func reset_key_system():
 	# Reset all key bulbs
@@ -845,9 +825,11 @@ func update_sprite_animation():
 		# Custom roll animation is handled by update_roll_animation and roll_sprite
 		# Don't interfere with main sprite during rolling
 		return
-	# In air: only use dash sprite during air dash, otherwise use idle
+	# In air: check for wall interactions first, then dash, otherwise idle
 	elif not is_on_floor():
-		if is_dashing:
+		if is_wall_sliding or is_wall_climbing:
+			target_animation = "wallslide"
+		elif is_dashing:
 			target_animation = "dashback" if is_dashing_backward else "dash"
 		else:
 			target_animation = "idle"
@@ -1017,6 +999,7 @@ func update_input_buffers(delta):
 	if Input.is_action_just_pressed("dash"):
 		buffered_dash = true
 		dash_buffer_timer = INPUT_BUFFER_TIME
+		print("DEBUG: Dash input pressed - air_rolling=", is_air_rolling, " is_rolling=", is_rolling, " velocity=", velocity)
 	
 	if Input.is_action_just_pressed("click"):
 		# Check if mouse is over debug UI
@@ -1116,6 +1099,14 @@ func start_air_roll():
 	# Track if this should become a brake on landing
 	air_roll_pending_brake = roll_key_held
 	
+	# Initialize dive duration tracking
+	dive_start_time = Time.get_ticks_msec() / 1000.0
+	dive_duration_seconds = 0
+	last_dive_combo_second = 0
+	
+	# Zoom camera out for diving
+	start_dive_camera_zoom()
+	
 	# Set visual state for air rolling
 	set_sprite_color_state(ColorState.ROLLING)
 	
@@ -1137,6 +1128,7 @@ func start_air_roll():
 func _transition_to_ground_roll():
 	# Transition from air roll to ground roll without resetting animation
 	print("Transitioning from air roll to ground roll at speed: ", abs(velocity.x))
+	print("Roll key held: ", roll_key_held, " Duration: ", roll_key_held_duration, " Should brake: ", should_brake_on_roll_end)
 	is_rolling = true
 	
 	# Determine if this is a brake roll or quick roll based on pending brake status
@@ -1186,7 +1178,7 @@ func start_roll():
 	if is_rolling:
 		return
 	
-	print("Starting ground roll at speed: ", abs(velocity.x))
+	print("DEBUG: Starting ground roll at speed: ", abs(velocity.x), " velocity=", velocity, " recent_air_dash_timer=", recent_air_dash_timer)
 	is_rolling = true
 	
 	# Determine if this is a brake roll or quick roll based on pending brake status
@@ -1355,12 +1347,29 @@ func update_air_roll(delta):
 	if roll_key_held:
 		roll_key_held_duration += delta
 	
+	# Track dive duration for combo points
+	var current_time = Time.get_ticks_msec() / 1000.0
+	var total_dive_time = current_time - dive_start_time
+	var current_second = int(total_dive_time)
+	
+	# Award combo points for each full second of diving
+	if current_second > last_dive_combo_second and current_second >= 1:
+		if effects_manager:
+			var dive_combo_name = "dive"
+			if current_second > 1:
+				dive_combo_name = "dive x" + str(current_second)
+			effects_manager.add_combo(dive_combo_name)
+		last_dive_combo_second = current_second
+	
 	# Check if we've landed - transition to ground roll with dive impact
 	if is_on_floor():
 		is_air_rolling = false
 		is_dive_impacting = true
 		dive_impact_frame = 0
 		dive_impact_timer = 0.0
+		
+		# Zoom camera back to normal when landing
+		end_dive_camera_zoom()
 		
 		# Make sure roll sprite is visible for dive impact and hide main sprite
 		if roll_sprite:
@@ -1381,8 +1390,8 @@ func update_air_roll(delta):
 
 func update_roll(delta):
 	if not is_rolling and not is_roll_leaping:
-		# Reset roll key tracking when not rolling (but not during air roll)
-		if not is_air_rolling:
+		# Reset roll key tracking when not rolling (but not during air roll or dive impact)
+		if not is_air_rolling and not is_dive_impacting:
 			roll_key_held = false
 			roll_key_held_duration = 0.0
 			should_brake_on_roll_end = false
@@ -1421,6 +1430,12 @@ func update_roll(delta):
 	
 	# Check if player went airborne during roll (rolled off a ledge)
 	if not is_on_floor():
+		# Don't roll leap if recently air dashed (prevents unwanted jump after wall bounce + air dash)
+		if recent_air_dash_timer > 0:
+			print("Roll leap prevented - recent air dash cooldown active")
+			end_roll()
+			return
+		
 		# Check if player is holding for a full brake AND has rolled far enough - if so, brake instead of leap
 		if roll_key_held and roll_key_held_duration >= roll_time_elapsed and roll_distance_traveled >= ROLL_BRAKE_MIN_DISTANCE:
 			print("Ledge brake triggered! Key held for: ", roll_key_held_duration, " Roll time: ", roll_time_elapsed, " Distance: ", roll_distance_traveled)
@@ -1448,14 +1463,17 @@ func update_roll(delta):
 		is_roll_leaping = true
 		roll_leap_timer = 0.0
 		# Add upward boost for the rolling leap
+		print("DEBUG: ROLL LEAP TRIGGERED! velocity.y before=", velocity.y)
 		velocity.y = min(velocity.y, -350.0)  # Strong upward boost
+		print("DEBUG: ROLL LEAP! velocity.y after=", velocity.y, " air_rolling=", is_air_rolling, " recent_air_dash_timer=", recent_air_dash_timer)
 		# Give a significant forward boost - more than just maintaining speed
 		var roll_leap_boost = max(roll_start_speed * 1.3, 800.0)  # At least 30% more speed or 800 units minimum
-		velocity.x = roll_leap_boost * roll_direction
+		velocity.x = clamp(roll_leap_boost * roll_direction, -max_speed, max_speed)
 		
-		# Add combo points for rolling leap
-		if effects_manager:
+		# Add combo points for rolling leap (with cooldown to prevent multiple triggers)
+		if effects_manager and roll_leap_combo_cooldown <= 0.0:
 			effects_manager.add_combo("roll_leap")
+			roll_leap_combo_cooldown = 0.5  # 0.5 second cooldown
 		return
 	
 	# Calculate target speed based on roll type
@@ -1475,8 +1493,8 @@ func update_roll(delta):
 		# Interpolate between start speed and target speed based on progress
 		target_speed = lerp(roll_start_speed, roll_target_speed, distance_progress)
 	
-	# Apply roll movement (no reversing)
-	velocity.x = target_speed * roll_direction
+	# Apply roll movement (no reversing) - respect speed limit
+	velocity.x = clamp(target_speed * roll_direction, -max_speed, max_speed)
 	
 	# Track distance traveled this frame
 	var distance_this_frame = abs(velocity.x) * delta
@@ -1502,7 +1520,9 @@ func restore_normal_sprite():
 	sprite.animation = "idle"
 	sprite.play("idle")
 
-func end_air_roll():
+func end_air_roll(allow_ground_roll_transition: bool = true):
+	# Store the transition preference
+	air_roll_allow_ground_transition = allow_ground_roll_transition
 	# Play exit animation first, then complete air roll ending
 	if roll_entry_textures.size() >= 2 and roll_sprite:
 		# Show exit frames quickly (same as end_roll)
@@ -1537,6 +1557,9 @@ func _show_air_roll_exit_frame_1():
 	timer2.timeout.connect(_end_air_roll_complete)
 
 func _end_air_roll_complete():
+	# Zoom camera back to normal
+	end_dive_camera_zoom()
+	
 	is_air_rolling = false
 	air_roll_pending_brake = false
 	
@@ -1550,6 +1573,9 @@ func _end_air_roll_complete():
 		roll_sprite.visible = false
 	sprite.visible = true
 	clear_sprite_color_state(ColorState.ROLLING)
+	
+	# Zoom camera back to normal
+	end_dive_camera_zoom()
 
 func _start_dive_impact_to_ground_roll():
 	# Play Dive_2 -> Dive_3 -> transition to ground roll
@@ -1569,14 +1595,17 @@ func _dive_impact_to_ground_roll_complete():
 	dive_impact_timer = 0.0
 	
 	# Check if we should start with a brake setup
-	if air_roll_pending_brake and roll_key_held:
+	# If key is held and has been held long enough, set up for brake
+	if roll_key_held and roll_key_held_duration >= 0.1:  # Simplified brake condition
 		# Transition to ground roll but mark it for immediate brake
 		_transition_to_ground_roll()
 		# Transfer the key hold duration and set up for brake
 		should_brake_on_roll_end = true
+		print("Dive to ground roll: Setting up brake - key held for: ", roll_key_held_duration)
 	else:
 		# Transition to normal ground roll
 		_transition_to_ground_roll()
+		print("Dive to ground roll: Normal roll - key held: ", roll_key_held, " duration: ", roll_key_held_duration)
 
 func _start_dive_impact_end():
 	# Play Dive_2 -> Dive_3 -> end (no ground roll)
@@ -1920,24 +1949,52 @@ func update_grapple_visuals():
 		rope_line.visible = false
 
 func calculate_upward_velocity_cap(dash_direction: Vector2, current_speed: float) -> float:
-	# Check if this is primarily an upward dash (within 45 degrees of straight up)
-	var upward_angle = dash_direction.angle_to(Vector2.UP)
-	var is_upward_dash = abs(upward_angle) <= PI / 4  # 45 degrees
+	# Calculate angle from straight up
+	var upward_angle = abs(dash_direction.angle_to(Vector2.UP))
 	
-	if is_upward_dash and current_speed > UPWARD_dash_speed_THRESHOLD:
+	# Define angle thresholds
+	var max_angle = PI / 4  # 45 degrees - beyond this, no limitation
+	
+	# Only apply limitation if within 45 degrees of straight up and above speed threshold
+	if upward_angle <= max_angle and current_speed > UPWARD_dash_speed_THRESHOLD:
+		# Calculate angle-based limitation factor
+		# 0° = 100% limitation, 15° = 80% limitation, 30° = 50% limitation, 45° = 0% limitation
+		var angle_factor = 1.0 - (upward_angle / max_angle)  # 1.0 at 0°, 0.0 at 45°
+		
+		# Apply custom scaling curve for the desired percentages
+		# We want: 0° = 1.0, 15° = 0.8, 30° = 0.5, 45° = 0.0
+		var angle_15_deg = PI / 12  # 15 degrees
+		var angle_30_deg = PI / 6   # 30 degrees
+		
+		if upward_angle <= angle_15_deg:
+			# Between 0° and 15°: scale from 100% to 80%
+			var t = upward_angle / angle_15_deg
+			angle_factor = 1.0 - (t * 0.2)  # 1.0 to 0.8
+		elif upward_angle <= angle_30_deg:
+			# Between 15° and 30°: scale from 80% to 50%
+			var t = (upward_angle - angle_15_deg) / (angle_30_deg - angle_15_deg)
+			angle_factor = 0.8 - (t * 0.3)  # 0.8 to 0.5
+		else:
+			# Between 30° and 45°: scale from 50% to 0%
+			var t = (upward_angle - angle_30_deg) / (max_angle - angle_30_deg)
+			angle_factor = 0.5 - (t * 0.5)  # 0.5 to 0.0
+		
 		# Calculate velocity cap based on current speed
 		var speed_excess = current_speed - UPWARD_dash_speed_THRESHOLD
 		var speed_range = UPWARD_DASH_max_speed - UPWARD_dash_speed_THRESHOLD
-		var cap_reduction = (speed_excess / speed_range) * (1.0 - UPWARD_DASH_MIN_SCALE)
-		cap_reduction = clamp(cap_reduction, 0.0, 1.0 - UPWARD_DASH_MIN_SCALE)
+		var base_cap_reduction = (speed_excess / speed_range) * (1.0 - UPWARD_DASH_MIN_SCALE)
+		base_cap_reduction = clamp(base_cap_reduction, 0.0, 1.0 - UPWARD_DASH_MIN_SCALE)
+		
+		# Apply angle-based scaling to the cap reduction
+		var final_cap_reduction = base_cap_reduction * angle_factor
 		
 		# Calculate maximum allowed upward velocity
 		var base_upward_velocity = dash_speed  # Normal dash speed
-		var max_upward_velocity = base_upward_velocity * (1.0 - cap_reduction)
+		var max_upward_velocity = base_upward_velocity * (1.0 - final_cap_reduction)
 		
 		# Visual feedback for velocity capping
-		if cap_reduction > 0.2 and effects_manager:
-			var scaling_color = Color.YELLOW.lerp(Color.RED, cap_reduction)
+		if final_cap_reduction > 0.1 and effects_manager:
+			var scaling_color = Color.YELLOW.lerp(Color.RED, final_cap_reduction)
 			effects_manager.emit_energy(global_position, scaling_color)
 		
 		return max_upward_velocity
@@ -1986,6 +2043,18 @@ func _physics_process(delta):
 	update_staling_system(delta)
 	update_movement_impairment(delta)
 	update_coyote_time(delta)
+	
+	# Update air dash roll leap cooldown
+	if recent_air_dash_timer > 0:
+		recent_air_dash_timer -= delta
+	
+	# Update roll leap combo cooldown
+	if roll_leap_combo_cooldown > 0:
+		roll_leap_combo_cooldown -= delta
+	
+	# Update wall kick disable timer
+	if wall_kick_disabled_timer > 0:
+		wall_kick_disabled_timer -= delta
 	
 	# Update new grappling system
 	update_grapple_visuals()
@@ -2047,12 +2116,20 @@ func _physics_process(delta):
 			wall_direction = -sign(wall_normal.x)
 			near_wall = true
 			
+			# Check if this is a vertical wall (not floor/ceiling)
+			var is_vertical_wall = abs(wall_normal.x) > 0.7  # Normal points mostly horizontally
+			
 			if direction == wall_direction:
-				# Cancel air roll if starting wall slide
-				if is_air_rolling:
+				# Check if this will be a dive bounce - if so, don't end air roll yet
+				var will_dive_bounce = is_air_rolling and abs(velocity.x) >= 200.0 and is_vertical_wall
+				
+				if is_air_rolling and not will_dive_bounce:
+					end_dive_camera_zoom()
 					end_air_roll()
-				is_wall_sliding = true
-				velocity.y = min(velocity.y, WALL_SLIDE_SPEED)
+				
+				if not will_dive_bounce:
+					is_wall_sliding = true
+					velocity.y = min(velocity.y, WALL_SLIDE_SPEED)
 			else:
 				is_wall_sliding = false
 		else:
@@ -2088,6 +2165,7 @@ func _physics_process(delta):
 		if not was_grounded:
 			# Check if we should start rolling on landing
 			if can_roll:
+				print("DEBUG: Landing - starting roll")
 				start_roll()
 			else:
 				# Start post-ground timer for late roll input
@@ -2167,11 +2245,8 @@ func _physics_process(delta):
 
 	slash_cooldown -= delta * (1.0 / combo_cooldown_reduction)
 	dash_cooldown -= delta * (1.0 / combo_cooldown_reduction)
-	slash_effect_timer -= delta
+	# Visual slash effect removed
 	bulb_delay_timer -= delta
-	
-	if slash_effect_timer <= 0 and slash_effect:
-		slash_effect.visible = false
 	
 	var can_dash = not is_on_floor() and dash_cooldown <= 0 and air_time >= min_air_time_for_dash and velocity.length() >= min_speed_for_dash and not has_used_air_dash and not is_wall_sliding
 	dash_icon.visible = false
@@ -2231,6 +2306,7 @@ func _physics_process(delta):
 			print("Dash slash triggered!")
 			# Cancel air roll if slashing
 			if is_air_rolling:
+				end_dive_camera_zoom()
 				end_air_roll()
 			
 			# During dash, can slash in any direction
@@ -2245,13 +2321,7 @@ func _physics_process(delta):
 				effects_manager.screen_shake(1.5, 0.1)
 			
 			# Reset slash effect to initial state before animation
-			if slash_effect:
-				slash_effect.visible = true
-				slash_effect.position = Vector2.ZERO
-				slash_effect.scale = Vector2(1.0, 1.0)
-				slash_effect.modulate = Color.WHITE
-				slash_effect.modulate.a = 1.0
-				print("Reset slash effect - direction: ", slash_dir)
+			# Visual slash effect removed
 			
 			# Add player recoil animation during slash
 			animate_slash_effect(slash_dir)
@@ -2298,6 +2368,7 @@ func _physics_process(delta):
 		if buffered_slash and slash_cooldown <= 0:
 			# Cancel air roll if slashing
 			if is_air_rolling:
+				end_dive_camera_zoom()
 				end_air_roll()
 			
 			var slash_dir: Vector2
@@ -2316,27 +2387,22 @@ func _physics_process(delta):
 				# Slash no longer gives combo points
 				effects_manager.emit_impact(global_position, slash_dir, 0.3)
 			
-			if slash_effect:
-				# Enhanced slash animation
-				slash_effect.rotation = atan2(slash_dir.y, slash_dir.x) + PI/2
-				slash_effect.position = slash_dir * 20  # Start closer
-				slash_effect.visible = true
-				slash_effect.modulate = Color.WHITE
-				slash_effect.scale = Vector2(0.5, 0.5)  # Start smaller
-				slash_effect_timer = SLASH_EFFECT_DURATION
-				
-				# Animate the slash effect
-				animate_slash_effect(slash_dir)
-				
-				# Add player recoil animation during slash
-				animate_player_slash(slash_dir)
-				
-				# Activate slash collision detection
-				activate_slash_collision(slash_dir)
+			# Visual slash effect removed
+			
+			# Animate the slash effect
+			animate_slash_effect(slash_dir)
+			
+			# Add player recoil animation during slash
+			animate_player_slash(slash_dir)
+			
+			# Activate slash collision detection
+			activate_slash_collision(slash_dir)
 		
-		if can_wall_kick and buffered_dash:
+		if can_wall_kick and buffered_dash and wall_kick_disabled_timer <= 0:
+			print("DEBUG: Wall kick triggered! velocity=", velocity, " can_wall_kick=", can_wall_kick, " wall_contact_timer=", wall_contact_timer)
 			# Cancel air roll if wall kicking
 			if is_air_rolling:
+				end_dive_camera_zoom()
 				end_air_roll()
 			is_wall_climbing = true
 			wall_climb_timer = WALL_CLIMB_DURATION
@@ -2348,6 +2414,7 @@ func _physics_process(delta):
 				effects_manager.screen_shake(1.0, 0.08)
 				effects_manager.emit_impact(global_position, Vector2(-wall_direction, 0), 0.4)
 		elif buffered_dash and dash_cooldown <= 0 and air_time >= min_air_time_for_dash and velocity.length() >= min_speed_for_dash and not has_used_air_dash and not is_wall_sliding:
+			print("DEBUG: Air dash triggered! velocity=", velocity, " air_rolling=", is_air_rolling)
 			dash_direction = get_precise_dash_direction()
 			stored_velocity = velocity
 			var speed_factor = min(stored_velocity.length() / max_speed, 1.0)
@@ -2357,8 +2424,12 @@ func _physics_process(delta):
 			velocity = Vector2.ZERO
 			# Cancel air roll if dashing
 			if is_air_rolling:
-				end_air_roll()
+				print("DEBUG: Ending air roll for air dash")
+				end_dive_camera_zoom()
+				end_air_roll(false)  # Don't transition to ground roll when starting dash
 			is_charging_dash = true
+			recent_air_dash_timer = AIR_DASH_ROLL_LEAP_COOLDOWN  # Prevent roll leap after air dash
+			print("DEBUG: Air dash setup complete - charging_dash=", is_charging_dash, " recent_air_dash_timer=", recent_air_dash_timer)
 			set_sprite_color_state(ColorState.CHARGING_DASH)
 			dash_cooldown = dash_cooldown_time
 			has_used_air_dash = true
@@ -2380,6 +2451,7 @@ func _physics_process(delta):
 		if buffered_slash and slash_cooldown <= 0:
 			# Cancel air roll if slashing
 			if is_air_rolling:
+				end_dive_camera_zoom()
 				end_air_roll()
 			
 			var slash_dir = get_8_direction_from_mouse()
@@ -2391,23 +2463,16 @@ func _physics_process(delta):
 			if effects_manager:
 				effects_manager.emit_impact(global_position, slash_dir, 0.3)
 			
-			if slash_effect:
-				# Enhanced slash animation
-				slash_effect.rotation = atan2(slash_dir.y, slash_dir.x) + PI/2
-				slash_effect.position = slash_dir * 20  # Start closer
-				slash_effect.visible = true
-				slash_effect.modulate = Color.WHITE
-				slash_effect.scale = Vector2(0.5, 0.5)  # Start smaller
-				slash_effect_timer = SLASH_EFFECT_DURATION
-				
-				# Animate the slash effect
-				animate_slash_effect(slash_dir)
-				
-				# Add player recoil animation during slash
-				animate_player_slash(slash_dir)
-				
-				# Activate slash collision detection
-				activate_slash_collision(slash_dir)
+			# Visual slash effect removed
+			
+			# Animate the slash effect
+			animate_slash_effect(slash_dir)
+			
+			# Add player recoil animation during slash
+			animate_player_slash(slash_dir)
+			
+			# Activate slash collision detection
+			activate_slash_collision(slash_dir)
 
 	if is_turning:
 		turn_timer -= delta
@@ -2518,6 +2583,82 @@ func _physics_process(delta):
 	var pre_move_velocity = velocity
 	move_and_slide()
 	
+	# Check for special tile collisions (kill tiles and bounce tiles)
+	if get_slide_collision_count() > 0:
+		for i in get_slide_collision_count():
+			var collision = get_slide_collision(i)
+			var collider = collision.get_collider()
+			
+			# Check if collision is with TileMap
+			if collider is TileMap:
+				var tilemap = collider as TileMap
+				var collision_point = collision.get_position()
+				var local_collision_point = tilemap.to_local(collision_point)
+				var tile_coord = tilemap.local_to_map(local_collision_point)
+				var source_id = tilemap.get_cell_source_id(0, tile_coord)
+				var atlas_coord = tilemap.get_cell_atlas_coords(0, tile_coord)
+				var alternative_id = tilemap.get_cell_alternative_tile(0, tile_coord)
+				
+				# Red kill tiles - use source ID 1 (OldTiles.PNG texture)
+				if source_id == 1:
+					print("HIT KILL TILE! Respawning...")
+					respawn()
+					return  # Exit early to prevent other collision processing
+				
+				# Bounce tiles - use alternative ID 11 on source 0 (original tiles)
+				elif source_id == 0 and alternative_id == 11:
+					var bounce_force = 600.0  # Strong upward bounce
+					# Preserve horizontal momentum but apply strong upward force
+					velocity.y = -bounce_force
+					print("BOUNCE TILE HIT! Velocity: ", velocity)
+					
+					# Add combo point for bounce tile
+					if effects_manager:
+						effects_manager.add_combo("bounce_tile")
+	
+	# Handle dive wall bounce after move_and_slide
+	if is_air_rolling and get_slide_collision_count() > 0:
+		for i in get_slide_collision_count():
+			var collision = get_slide_collision(i)
+			var collision_normal = collision.get_normal()
+			
+			# Check if this is a vertical wall collision (not floor/ceiling)
+			if abs(collision_normal.x) > 0.7 and abs(pre_move_velocity.x) >= 200.0:
+				# Strong horizontal velocity hitting a vertical wall
+				var bounce_strength = abs(pre_move_velocity.x) * 0.9
+				velocity.x = -sign(pre_move_velocity.x) * bounce_strength
+				velocity.y -= 150.0  # Upward boost for bounce arc
+				
+				# Check if we can replenish dash (5 second cooldown on all wall bounces)
+				var current_time = Time.get_ticks_msec() / 1000.0  # Convert to seconds
+				var collision_point = collision.get_position()
+				var cooldown_expired = (current_time - last_wall_bounce_time) > WALL_BOUNCE_COOLDOWN
+				
+				if cooldown_expired:
+					# Replenish dash after wall bounce
+					dash_cooldown = 0.0
+					has_used_air_dash = false
+					print("DIVE WALL BOUNCE! Dash replenished!")
+					
+					# Update wall bounce tracking
+					last_wall_bounce_position = collision_point
+					last_wall_bounce_time = current_time
+				else:
+					print("DIVE WALL BOUNCE! Wall bounce dash replenishment on cooldown")
+					# Don't update tracking when on cooldown
+				
+				# Always give combo points for wall bounce (regardless of dash replenishment)
+				if effects_manager:
+					effects_manager.add_combo("wall_bounce")
+				
+				# Disable wall kicking after bouncing to prevent accidental wall kicks
+				can_wall_kick = false
+				wall_contact_timer = 0.0
+				wall_kick_disabled_timer = WALL_KICK_DISABLE_DURATION  # Disable wall kicks for 500ms
+				
+				print("DEBUG: Wall bounce at: ", collision_point, " Velocity: ", velocity, " air_rolling=", is_air_rolling, " wall_kick_disabled for:", WALL_KICK_DISABLE_DURATION)
+				break  # Only bounce once per frame
+	
 	# Update roll systems
 	update_air_roll(delta)
 	update_roll(delta)
@@ -2525,6 +2666,9 @@ func _physics_process(delta):
 	# Update dive impact animation if needed
 	if is_dive_impacting:
 		update_roll_animation(delta)
+		# Continue tracking key hold duration during dive impact
+		if roll_key_held:
+			roll_key_held_duration += delta
 	
 	# Enforce movement impairment after move_and_slide
 	if movement_impairment_first_frame:
@@ -2533,6 +2677,15 @@ func _physics_process(delta):
 	
 	# Check for impacts and landings
 	check_for_impacts(pre_move_velocity, delta)
+	
+	# Handle speed-based camera zoom
+	var current_speed = velocity.length()
+	if current_speed >= SPEED_ZOOM_THRESHOLD and not is_speed_zoomed and not is_air_rolling:
+		is_speed_zoomed = true
+		start_speed_camera_zoom()
+	elif current_speed < SPEED_ZOOM_THRESHOLD and is_speed_zoomed and not is_air_rolling:
+		is_speed_zoomed = false
+		end_speed_camera_zoom()
 	
 	# Update last velocity for next frame
 	last_velocity = velocity
@@ -2649,6 +2802,7 @@ func animate_arrow_dash():
 		is_arrow_animating = false
 	).set_delay(charge_delay + 0.5)
 
+
 func trigger_landing_animation():
 	# Stop any existing landing animation
 	if landing_tween:
@@ -2668,3 +2822,68 @@ func trigger_landing_animation():
 	landing_tween.set_trans(Tween.TRANS_CUBIC)
 	landing_tween.tween_property(self, "landing_offset", 0.0, LANDING_RECOVERY_DURATION)
 	landing_tween.tween_callback(func(): is_landing = false)
+
+func start_dive_camera_zoom():
+	if not camera:
+		return
+	
+	# Stop any existing camera zoom tween
+	if camera_zoom_tween:
+		camera_zoom_tween.kill()
+	
+	# Smoothly zoom out for diving
+	camera_zoom_tween = create_tween()
+	camera_zoom_tween.set_ease(Tween.EASE_OUT)
+	camera_zoom_tween.set_trans(Tween.TRANS_CUBIC)
+	camera_zoom_tween.tween_property(camera, "zoom", dive_camera_zoom, 0.3)
+
+func end_dive_camera_zoom():
+	if not camera:
+		return
+	
+	# Stop any existing camera zoom tween
+	if camera_zoom_tween:
+		camera_zoom_tween.kill()
+	
+	# Check if we should still be speed zoomed
+	var current_speed = velocity.length()
+	var target_zoom = default_camera_zoom
+	if current_speed >= SPEED_ZOOM_THRESHOLD:
+		target_zoom = speed_camera_zoom
+		is_speed_zoomed = true
+	else:
+		is_speed_zoomed = false
+	
+	# Smoothly zoom to appropriate level
+	camera_zoom_tween = create_tween()
+	camera_zoom_tween.set_ease(Tween.EASE_OUT)
+	camera_zoom_tween.set_trans(Tween.TRANS_CUBIC)
+	camera_zoom_tween.tween_property(camera, "zoom", target_zoom, 0.4)
+
+func start_speed_camera_zoom():
+	if not camera or is_air_rolling:
+		return  # Don't override dive zoom
+	
+	# Stop any existing camera zoom tween
+	if camera_zoom_tween:
+		camera_zoom_tween.kill()
+	
+	# Smoothly zoom out for high speed
+	camera_zoom_tween = create_tween()
+	camera_zoom_tween.set_ease(Tween.EASE_OUT)
+	camera_zoom_tween.set_trans(Tween.TRANS_CUBIC)
+	camera_zoom_tween.tween_property(camera, "zoom", speed_camera_zoom, 0.3)
+
+func end_speed_camera_zoom():
+	if not camera or is_air_rolling:
+		return  # Don't override dive zoom
+	
+	# Stop any existing camera zoom tween
+	if camera_zoom_tween:
+		camera_zoom_tween.kill()
+	
+	# Smoothly zoom back to normal
+	camera_zoom_tween = create_tween()
+	camera_zoom_tween.set_ease(Tween.EASE_OUT)
+	camera_zoom_tween.set_trans(Tween.TRANS_CUBIC)
+	camera_zoom_tween.tween_property(camera, "zoom", default_camera_zoom, 0.4)

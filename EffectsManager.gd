@@ -1,7 +1,7 @@
 extends Node2D
 
 signal combo_updated(combo_count: int, combo_level: String)
-signal combo_move_updated(move_name: String, speed_multiplier: float)
+signal combo_move_updated(move_name: String, speed_multiplier: float, is_staled: bool)
 
 # Screen shake variables - smooth shake system
 var shake_intensity = 0.0
@@ -28,17 +28,18 @@ var low_speed_timer = 0.0  # Timer for tracking consecutive low speed
 var inactivity_timer = 0.0  # Timer for tracking time since last combo action
 var last_combo_move = ""  # Track the last combo-worthy move
 var current_speed = 0.0  # Current player speed for multiplier calculation
-var speedbreak_cooldown = 0.0  # Cooldown timer for speedbreak
-var has_crossed_2000_speed = false  # Track if we've crossed the threshold this time
+var current_speed_multiplier = 1.0  # Track current multiplier for change detection
+var movement_timer = 0.0  # Timer for tracking player movement
+var last_position = Vector2.ZERO  # Track player position for movement detection
 const MAX_COMBO_MOVES = 20
 const RECENT_MOVES_CHECK = 10  # Check last 10 moves for repetition
 const MAX_SAME_MOVES = 5  # Max 5 of same move in recent moves
 const GROUND_GRACE_TIME = 1.5  # Reduced to 1.5 seconds
 const MIN_SPEED_FOR_COMBO = 50.0  # Speed threshold for low speed timer
 const LOW_SPEED_TIMEOUT = 5.0  # 5 seconds of low speed before reset
-const INACTIVITY_TIMEOUT = 5.0  # 5 seconds of no combo actions before reset
-const SPEEDBREAK_COOLDOWN = 4.0  # 4 seconds between speedbreak triggers
-const SPEEDBREAK_THRESHOLD = 2000.0  # Speed threshold for speedbreak
+const MOVEMENT_TIMEOUT = 2.8  # 2.8 seconds of no movement before reset
+const MIN_MOVEMENT_THRESHOLD = 5.0  # Minimum movement distance to reset timer
+const INACTIVITY_TIMEOUT = 2.8  # 2.8 seconds of no combo actions before reset
 const COMBO_RATINGS = [
 	"dead",      # 0-9 points
 	"asleep",    # 10-19 points
@@ -183,35 +184,46 @@ func add_combo(action_type: String = ""):
 	var speed_multiplier = get_speed_multiplier(current_speed)
 	var points = base_points * speed_multiplier
 	
-	# Check for repetition in recent moves (last 8 moves)
+	# Check for consecutive repetition (3 in a row = stale on 4th)
+	var consecutive_count = 0
+	var moves_to_check = min(3, combo_moves.size())
+	for i in range(moves_to_check):
+		var recent_move = combo_moves[combo_moves.size() - 1 - i]
+		if recent_move == action_type:
+			consecutive_count += 1
+		else:
+			break
+	
+	# Check for repetition in recent moves (last 10 moves) - old logic
 	var recent_moves = combo_moves.slice(-RECENT_MOVES_CHECK)
 	var same_move_count = 0
 	for move in recent_moves:
 		if move == action_type:
 			same_move_count += 1
 	
-	# If already at max repetitions, ignore this move (don't add points)
-	if same_move_count >= MAX_SAME_MOVES:
-		# Still add to move list for tracking, but no points
-		combo_moves.append(action_type)
-		if combo_moves.size() > MAX_COMBO_MOVES:
-			combo_moves.pop_front()
-		return
+	# Stale if either: 3 consecutive OR 5+ in last 10 moves
+	var is_staled = consecutive_count >= 3 or same_move_count >= MAX_SAME_MOVES
 	
 	# Add move to recent moves list
 	combo_moves.append(action_type)
 	if combo_moves.size() > MAX_COMBO_MOVES:
 		combo_moves.pop_front()
 	
+	if is_staled:
+		# Emit move signal with staled flag but don't add points
+		combo_move_updated.emit(action_type, speed_multiplier, true)
+		return
+	
 	# Update last combo move and emit signal for UI
 	last_combo_move = action_type
-	combo_move_updated.emit(action_type, speed_multiplier)
+	combo_move_updated.emit(action_type, speed_multiplier, false)
 	
 	# Add points
 	combo_points += points
 	ground_grace_timer = 0.0  # Reset grace timer on successful action
 	low_speed_timer = 0.0  # Reset low speed timer on successful action
 	inactivity_timer = 0.0  # Reset inactivity timer on successful action
+	movement_timer = 0.0  # Reset movement timer on successful action
 	
 	var combo_rating = get_combo_rating()
 	combo_updated.emit(int(combo_points), combo_rating)  # Display as integer
@@ -229,10 +241,12 @@ func add_combo(action_type: String = ""):
 		screen_shake(0.5, 0.05)
 
 func get_speed_multiplier(speed: float) -> float:
-	if speed >= 2000.0:
+	if speed >= 2500.0:
+		return 3.0
+	elif speed >= 1800.0:
 		return 2.0
 	elif speed >= 1200.0:
-		return 1.5
+		return 2.0
 	else:
 		return 1.0
 
@@ -244,15 +258,30 @@ func get_points_for_action(action_type: String) -> float:
 			return 1.0
 		"roll", "roll_leap":
 			return 1.0
-		"speedbreak":
-			return 1.0
 		"wall_kick":
 			return 2.0
+		"wall_bounce":
+			return 1.0
+		"bounce_tile":
+			return 1.0
+		"bub_destroy":
+			return 5.0
 		"dash_replenish", "smash":
 			return 5.0
 		"cashgrab":
 			return 0.5
 		_:
+			# Handle dive combos with multipliers
+			if action_type.begins_with("dive"):
+				if action_type == "dive":
+					return 1.0  # Base dive for 1 second
+				else:
+					# Extract multiplier from "dive x10" format
+					var parts = action_type.split(" x")
+					if parts.size() == 2:
+						var multiplier = int(parts[1])
+						return float(multiplier)  # 1 point per second of diving
+				return 1.0
 			return 0.0
 
 func reset_combo():
@@ -261,6 +290,7 @@ func reset_combo():
 	ground_grace_timer = 0.0
 	low_speed_timer = 0.0
 	inactivity_timer = 0.0
+	movement_timer = 0.0
 	combo_updated.emit(int(combo_points), get_combo_rating())
 
 func get_combo_rating() -> String:
@@ -293,17 +323,17 @@ func update_combo_state(delta: float, player_velocity: Vector2, is_grounded: boo
 	var previous_speed = current_speed
 	current_speed = player_velocity.length()
 	
-	# Update speedbreak cooldown
-	speedbreak_cooldown -= delta
+	# Get current player position for movement tracking
+	var current_position = get_player_position()
 	
-	# Check for speedbreak (crossing 2000 speed threshold)
-	if previous_speed < SPEEDBREAK_THRESHOLD and current_speed >= SPEEDBREAK_THRESHOLD:
-		if speedbreak_cooldown <= 0.0:
-			add_combo("speedbreak")
-			speedbreak_cooldown = SPEEDBREAK_COOLDOWN
-			has_crossed_2000_speed = true
-	elif current_speed < SPEEDBREAK_THRESHOLD:
-		has_crossed_2000_speed = false
+	# Check for speed multiplier changes
+	var new_multiplier = get_speed_multiplier(current_speed)
+	if new_multiplier != current_speed_multiplier:
+		current_speed_multiplier = new_multiplier
+		# Emit signal for UI to show multiplier change
+		var game_ui = get_tree().get_first_node_in_group("game_ui")
+		if game_ui:
+			game_ui.show_multiplier_change(current_speed_multiplier)
 	
 	# Check for prolonged low speed (5 seconds of 0-50 speed)
 	if current_speed <= MIN_SPEED_FOR_COMBO:
@@ -313,10 +343,22 @@ func update_combo_state(delta: float, player_velocity: Vector2, is_grounded: boo
 	else:
 		low_speed_timer = 0.0  # Reset timer when moving fast enough
 	
-	# Check for inactivity (5 seconds since last combo action)
+	# Check for inactivity (2.8 seconds since last combo action)
 	inactivity_timer += delta
 	if inactivity_timer >= INACTIVITY_TIMEOUT and combo_points > 0:
 		reset_combo()
+	
+	# Check for lack of movement (2.8 seconds of not moving)
+	var movement_distance = current_position.distance_to(last_position)
+	if movement_distance >= MIN_MOVEMENT_THRESHOLD:
+		# Player moved enough, reset movement timer
+		movement_timer = 0.0
+		last_position = current_position
+	else:
+		# Player hasn't moved enough, increment timer
+		movement_timer += delta
+		if movement_timer >= MOVEMENT_TIMEOUT and combo_points > 0:
+			reset_combo()
 	
 	# Handle ground touch grace period
 	if was_grounded_last_frame and not is_grounded:

@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3 uid="uid://b72bwutmwgfog"]
+[gd_scene load_steps=15 format=3 uid="uid://b72bwutmwgfog"]
 
 [ext_resource type="Script" uid="uid://bfkx3qskfrmqf" path="res://Player.gd" id="1_8v5xj"]
 [ext_resource type="Texture2D" uid="uid://bywo1mqjc4swf" path="res://Assets/Frame 1.PNG" id="2_frame1"]
@@ -8,7 +8,8 @@
 [ext_resource type="Texture2D" uid="uid://dvwi4xk1ck8cl" path="res://Assets/Frame Dash.PNG" id="6_frame_dash"]
 [ext_resource type="Texture2D" uid="uid://db3e2535e6o2l" path="res://Assets/Frame Roll.PNG" id="7_frame_roll"]
 [ext_resource type="Texture2D" uid="uid://v8dusljqpwyu" path="res://Assets/DashBack.png" id="8_dashback"]
-[ext_resource type="PackedScene" uid="uid://b8yq2mv8e5cvi" path="res://Scythe.tscn" id="9_scythe"]
+[ext_resource type="Texture2D" uid="uid://dgwb1ncx6khvw" path="res://Assets/WallSlide.PNG" id="9_wallslide"]
+[ext_resource type="PackedScene" uid="uid://b8yq2mv8e5cvi" path="res://Scythe.tscn" id="10_scythe"]
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_player"]
 animations = [{
@@ -60,6 +61,14 @@ animations = [{
 "loop": true,
 "name": &"run",
 "speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("9_wallslide")
+}],
+"loop": true,
+"name": &"wallslide",
+"speed": 1.0
 }]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_6v5xj"]
@@ -70,13 +79,6 @@ size = Vector2(12, 12)
 
 [sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_3"]
 size = Vector2(12, 12)
-
-[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_4"]
-size = Vector2(80, 20)
-
-[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_1"]
-radius = 20.0
-height = 60.0
 
 [node name="Player" type="CharacterBody2D"]
 script = ExtResource("1_8v5xj")
@@ -105,17 +107,6 @@ position = Vector2(0, -50)
 scale = Vector2(0.8, 0.8)
 texture = SubResource("PlaceholderTexture2D_3")
 
-[node name="SlashEffect" type="Sprite2D" parent="."]
-visible = false
-modulate = Color(1, 1, 0, 0.7)
-texture = SubResource("PlaceholderTexture2D_4")
-
-[node name="SlashArea" type="Area2D" parent="."]
-monitoring = false
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="SlashArea"]
-shape = SubResource("CapsuleShape2D_1")
-
 [node name="Camera2D" type="Camera2D" parent="."]
 
-[node name="Scythe" parent="." instance=ExtResource("9_scythe")]
+[node name="Scythe" parent="." instance=ExtResource("10_scythe")]

@@ -3,9 +3,9 @@ extends Node2D
 @onready var department_sprite = $DepartmentSprite
 @onready var inside_sprite = $InsideSprite
 @onready var interaction_area = $InteractionArea
-@onready var manager = get_node("../Manager")
-@onready var handler = get_node("../Handler")
 
+var manager: Node
+var handler: Node
 var outside_texture: Texture2D
 var inside_texture: Texture2D
 var is_inside = false
@@ -25,9 +25,15 @@ func _ready():
 	inside_sprite.z_index = -10
 	department_sprite.z_index = -5
 	
-	# Initially hide interior objects
-	manager.visible = false
-	handler.visible = false
+	# Find manager and handler nodes safely
+	manager = get_node_or_null("../Manager")
+	handler = get_node_or_null("../Handler")
+	
+	# Initially hide interior objects if they exist
+	if manager and is_instance_valid(manager):
+		manager.visible = false
+	if handler and is_instance_valid(handler):
+		handler.visible = false
 	
 	# Connect player interaction
 	interaction_area.body_entered.connect(_on_player_entered)
@@ -59,8 +65,10 @@ func crossfade_to_inside():
 	
 	# Show interior objects after crossfade
 	crossfade_tween.tween_callback(func(): 
-		manager.visible = true
-		handler.visible = true
+		if manager and is_instance_valid(manager):
+			manager.visible = true
+		if handler and is_instance_valid(handler):
+			handler.visible = true
 	)
 
 func crossfade_to_outside():
@@ -68,8 +76,10 @@ func crossfade_to_outside():
 	print("Player exited department - switching to outside view")
 	
 	# Hide interior objects immediately
-	manager.visible = false
-	handler.visible = false
+	if manager and is_instance_valid(manager):
+		manager.visible = false
+	if handler and is_instance_valid(handler):
+		handler.visible = false
 	
 	# Stop any existing tween
 	if crossfade_tween:
